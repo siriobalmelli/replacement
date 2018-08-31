@@ -1,0 +1,38 @@
+---
+# static variable assignments to ad-hoc keys
+# all keys are available for substitution in replacement directives
+title: skeleton
+description: skeleton template to show ReplacemenT data model
+version: 1.0
+
+# parsing begins in 'replacement' blocks and is list items from here down
+replacement:
+  # output directives produce lines of text
+  # 'literal' sources text from the template itself
+  - output: literal
+    literal: |
+      this will be output literally
+  - output: literal
+    # process 'literal' through Python str.format()
+    process: format
+    literal: |
+      title - {title}
+  - output: literal
+    # process 'literal' through string.template.safe_substitute()
+    process: safe_substitute
+    nest: hello  # will not be visible outside this output directive
+    literal: |
+      version - $version - $nest
+
+  - replacement:
+      - extend: literal
+        var: title
+        literal: nested replacement blocks
+      - extend: eval
+        var: math
+        eval: |
+          2 + 2
+      - output: literal
+        process: format
+        literal: |
+...
