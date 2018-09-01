@@ -9,7 +9,7 @@ output:
   # each list item is a 'block' - it corresponds to a single function invocation
   - literal: |
       This text will be output literally.
-  - literal: |
+  - literal: |  # this is another block
       Today we discuss {description}
   - process: format  # process all preceding text through Python str.format()
 
@@ -30,11 +30,14 @@ output:
     # NOTE valid values of 'substitute' are the same as for 'process'
 
   - output:
-      - file: |  # read a file at this literal path
+      - file: |  # read contents of file at this path
           a_file.txt
       - file: |
-          source_v{version}.txt
+          source_v{version}-{random}.txt
+        random: 42  # another example of ad-hoc variable assignment
         substitute: format
       - process: safe_substitute  # use string.template for '$var' constructs
-      # NOTE 'process' sees content of both files
+      # NOTE 'process' operates on the output of both 'file' directives
+
+# TODO how to process multiple inputs
 ...
