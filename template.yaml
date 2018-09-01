@@ -2,37 +2,39 @@
 # static variable assignments to ad-hoc keys
 # all keys are available for substitution in replacement directives
 title: skeleton
-description: skeleton template to show ReplacemenT data model
+description: a skeleton template to show 'replacement' data model
 version: 1.0
 
-# parsing begins in 'replacement' blocks and is list items from here down
-replacement:
-  # output directives produce lines of text
-  # 'literal' sources text from the template itself
-  - output: literal
-    literal: |
-      this will be output literally
-  - output: literal
-    # process 'literal' through Python str.format()
-    process: format
-    literal: |
-      title - {title}
-  - output: literal
-    # process 'literal' through string.template.safe_substitute()
-    process: safe_substitute
-    nest: hello  # will not be visible outside this output directive
-    literal: |
-      version - $version - $nest
+output:
+  # each list item is a 'block' - it corresponds to a single function invocation
+  - literal: |
+      This text will be output literally.
+  - literal: |
+      Today we discuss {description}
+  - process: format  # process all preceding text through Python str.format()
 
-  - replacement:
-      - extend: literal
-        var: title
-        literal: nested replacement blocks
-      - extend: eval
-        var: math
+  - output:  # output blocks can nest
+      - exec: import datetime  # executes but does *not* capture output
+      - set: date  # only this block will see a 'date' variable when processing
         eval: |
-          2 + 2
-      - output: literal
-        process: format
-        literal: |
+          str(datetime.date.today())
+      - literal: |
+          date - {date}
+      - process: format  # only processes output lines from inside this block
+
+  - set: version  # clobber 'version' in the substitutions dictionary
+    eval: |
+      {version} + 0.1
+    substitute: format  # str.format() the text of variables in this block
+    # NOTE str.format() will see old value of 'version'
+    # NOTE valid values of 'substitute' are the same as for 'process'
+
+  - output:
+      - file: |  # read a file at this literal path
+          a_file.txt
+      - file: |
+          source_v{version}.txt
+        substitute: format
+      - process: safe_substitute  # use string.template for '$var' constructs
+      # NOTE 'process' sees content of both files
 ...
