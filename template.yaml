@@ -5,7 +5,8 @@ title: skeleton
 description: a skeleton template to show 'replacement' data model
 version: 1.0
 
-output:
+# list of directives
+replacement:
   # each list item is a 'block' - it corresponds to a single function invocation
   - literal: |
       This text will be output literally.
@@ -13,7 +14,7 @@ output:
       Today we discuss {description}
   - process: format  # process all preceding text through Python str.format()
 
-  - output:  # output blocks can nest
+  - replacement:  # recurse
       - exec: import datetime  # executes but does *not* capture output
       - set: date  # only this block will see a 'date' variable when processing
         eval: |
@@ -29,7 +30,7 @@ output:
     # NOTE str.format() will see old value of 'version'
     # NOTE valid values of 'substitute' are the same as for 'process'
 
-  - output:
+  - replacement:
       - file: |  # read contents of file at this path
           a_file.txt
       - file: |
