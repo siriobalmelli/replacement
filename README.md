@@ -2,12 +2,18 @@
 
 Replacement is a python utility that parses a template and outputs text.
 
+NOTE: the examples given here are further documented in the
+	[examples documentation](examples/README.md).
+
+## Introduction
+
 A *template* is a YAML file containing a `replacement` list
 	and optionally some *variables*.
 
 ```yaml
 ---
 # simplistic template example
+# examples/hello.yaml
 replacement:
   - literal: |
       hello world
@@ -15,7 +21,7 @@ replacement:
 ```
 
 ```bash
-$ replacement -t example.yaml
+$ replacement -t examples/hello.yaml
 hello world
 ```
 
@@ -27,6 +33,7 @@ They are then available when processing text (aka: variable substitution).
 ```yaml
 ---
 # variable substitution example
+# examples/format.yaml
 vers: 1.0
 replacement:
   - literal: |
@@ -36,7 +43,7 @@ replacement:
 ```
 
 ```bash
-$ replacement -t example.yaml
+$ replacement -t examples/format.yaml
 file version 1.0
 ```
 
@@ -52,6 +59,7 @@ Blocks are executed in sequence.
 ```yaml
 ---
 # show blocks being executed in sequence
+# examples/sequence.yaml
 vers: 1.0
 replacement:
   # 'process' directive sees no lines in buffer
@@ -64,7 +72,7 @@ replacement:
 ```
 
 ```bash
-$ replacement -t example.yaml
+$ replacement -t examples/sequence.yaml
 file version {vers}
 ```
 
@@ -77,6 +85,7 @@ These may be overwritten with the `buffer` *parameter*:
 ```yaml
 ---
 # show buffer mechanics
+# examples/buffer.yaml
 vers: 1.0
 replacement:
   - literal: |
@@ -84,7 +93,7 @@ replacement:
   # replaces buffer contents; the default would be to append to buffer
   - literal: |
       file version {vers}
-	buffer: replace
+    buffer: replace
   # appends formatted text to buffer: the default would be to replace it
   - process: format
     buffer: append
@@ -92,7 +101,7 @@ replacement:
 ```
 
 ```bash
-$ replacement -t example.yaml
+$ replacement -t examples/buffer.yaml
 file version {vers}
 file version 1.0
 ```
@@ -106,25 +115,27 @@ This allows for recursion, which is useful in limiting how much (aka what parts)
 ```yaml
 ---
 # show recursion
+# examples/recursion.yaml
 vers: 1.0
 name: recursion
 replacement:
   - replacement:
       - literal:
-	      v {vers} substituted outside replacement block
+          v {vers} substituted outside replacement block
       - file: |
           v{vers}.txt
-		vers: 1  # clobber 'vers' in this 'replacement' block only
+        vers: 1  # clobber 'vers' in this 'replacement' block only
         substitute: format  # substitute the value of 'file' before evaluating
       - process: safe_substitute  # use string.template for '$var' constructs
   - literal: |
-	  file version {vers}
+      file version {vers}
   - process: format
 ...
 ```
 
 ```bash
-# assuming `echo '$name v$vers' >v1.txt`
+$ cat examples/v1.txt
+$name v$vers
 $ replacement -t example.yaml
 v 1.0 substituted outside replacement block
 recursion v1
