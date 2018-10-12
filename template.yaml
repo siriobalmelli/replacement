@@ -1,44 +1,84 @@
 ---
-# static variable assignments to ad-hoc keys
-# all keys are available for substitution in replacement directives
-title: skeleton
-description: a skeleton template to show 'replacement' data model
-version: 1.0
-
-# list of directives
+##
+# replacement - all-inclusive template as demonstration
+##
 replacement:
-  # each list item is a 'block' - it corresponds to a single function invocation
-  - literal: |
-      This text will be output literally.
-  - literal: |  # this is another block
-      Today we discuss {description}
-  - process: format  # process all preceding text through Python str.format()
+  # output text, sourced literally from objects in 'input'
+  text: text
+  input:
+    # set the metadata key 'version' from the literal value 'v1.5'
+    - meta: text
+      spec: version
+      input: v1.5
 
-  - replacement:  # recurse
-      - exec: import datetime  # executes but does *not* capture output
-      - set: date  # only this block will see a 'date' variable when processing
-        eval: |
-          str(datetime.date.today())
-      - literal: |
-          date - {date}
-      - process: format  # only processes output lines from inside this block
+    # set the metadata key 'maj_ver' from the result of an eval();
+    # perform str.format() substitution on the value of all keys in the block
+    # (including 'input') before parsing the block
+    - meta: eval
+      prep: format
+      spec: maj_ver
+      input: |
+        "{version}".split('.')[0]
 
-  - set: version  # clobber 'version' in the substitutions dictionary
-    eval: |
-      {version} + 0.1
-    substitute: format  # str.format() the text of variables in this block
-    # NOTE str.format() will see old value of 'version'
-    # NOTE valid values of 'substitute' are the same as for 'process'
+    # - parse a JSON, a yaml literal and a yaml file into dictionaries
+    # - merge the dictionaries
+    # - output yaml
+    # - run '$' style string substitution on the output
+    - text: dict
+      spec: yaml
+      proc: substitute
+      input:
+        - dict: text
+          parse: json
+          input: |
+            { "hi": 5 }
+        - dict: text
+          parse: yaml
+          input: |
+            ---
+            this: document version $version
+            ...
+        - dict: file
+          parse: yaml
+          input: a_file.yaml
 
-  - replacement:
-      - file: |  # read contents of file at this path
-          a_file.txt
-      - file: |
-          source_v{version}-{random}.txt
-        random: 42  # another example of ad-hoc variable assignment
-        substitute: format
-      - process: safe_substitute  # use string.template for '$var' constructs
-      # NOTE 'process' operates on the output of both 'file' directives
+    # concatenate some literals and the contents of a file into 'unsanitized'
+    - meta: text
+      spec: unsanitized
+      input:
+        - text: text
+          input: |
+            # leading test before input
+        - text: file
+          input: some_script.rsc
+        - text: text
+          input:
+            trailing test is good
 
-# TODO how to process multiple inputs
+    # feed the contents of 'unsanitized' as the input to a function,
+    # expect a text output
+    - text: function
+      args: mikrotik.MikroTik.sanitize
+      input:
+        - text: meta
+          input: unsanitized
+
+    # execute a utility yielding yaml and parse its output into a dictionary
+    # merge this dictionary with another created by parsing a yaml literal
+    # output the merged dictionary as a yaml
+    - text: dict
+      spec: yaml
+      input:
+        - dict: exec
+          parse: yaml
+          prep: format
+          input: |
+            # this returns valid YAML
+            template.py --param={version}
+        - dict: text
+          parse: yaml
+          input: |
+            ---
+            format: yaml
+            ...
 ...

@@ -1,0 +1,69 @@
+---
+## pipeline stages:
+# prep -> input + parse -> yield + spec -> proc
+#
+# prep          :: optionally preprocess (variable substitution)
+#                   the block before parsing it.
+# input + parse :: execute input directive with 'args',
+#                   parse received input as per 'parse'.
+# yield + spec  :: return output formatted as per spec
+# proc          :: perform variable substitution on output
+
+##
+# format of a block/directive
+##
+block:
+  - yield: inputType
+    spec: specVal
+    args: argsVal
+    parse: parseVal
+    format: formatVal
+    input: inputVal
+
+##
+# definition of schema elements
+##
+schema:
+  # 'input' : where to source data
+  inputType:
+    # we can input everything we output (see 'yield' below)
+    - text  # text: a list of newline-separated strings
+    - dict  # a dictionary of key-value pairs
+    - meta  # a key-value pair retrieved from substitutions dictionary
+    # we can also input from other sources
+    - file  # open a file on disk
+    - eval  # python3 eval() statement
+    - function  # import and then call call a function
+    - exec  # subprocess execution (usually bash)
+
+  inputVal: per_input_specific
+
+  # optional 'args' : input-specific parameters
+  argsVal:
+    file: file_name
+    function: function_name
+
+  # optional 'parse' : expected input format (how input is parsed/handled)
+  parseVal: [lines, json, yaml]  # default value is 'lines'
+
+  # substitution directives:
+  # these are not mutually exclusive - a block may have both 'prep' and 'proc'
+  format:
+    - prep  # substitute values in block before parsing
+    - proc  # substitute output after processing
+  formatVal:
+    - format  # use python str.format()
+    - substitute  # use string.Template().substitute
+    - safe_substitute  # use string.Template().safe_substitute
+
+  # 'yield' : what to output (how to format output)stored/
+  # NOTE 'meta' inserts output into substitutions dictionary
+  # (used by mangle directives)
+  yield: [text, dict, meta]
+
+  # optional 'spec' : specific per-yield output specifications
+  specVal:
+    - text: [lines, json, yaml]  # encode as list of strings, or dump json/yaml
+      default: lines
+    - meta: key_name  # insert into substitutions dictionary under 'key_name'
+...

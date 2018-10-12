@@ -1,9 +1,0 @@
----
-# variable substitution example
-# examples/format.yaml
-vers: 1.0
-replacement:
-  - literal: |
-      file version {vers}
-  - process: format
-...

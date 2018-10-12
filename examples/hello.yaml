@@ -2,6 +2,7 @@
 # simplistic template example
 # examples/hello.yaml
 replacement:
-  - literal: |
+  - text: text
+    input:
       hello world
 ...

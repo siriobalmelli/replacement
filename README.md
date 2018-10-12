@@ -7,15 +7,21 @@ NOTE: the examples given here are further documented in the
 
 ## Introduction
 
-A *template* is a YAML file containing a `replacement` list
-	and optionally some *variables*.
+A *template* is a YAML file containing a `replacement` object.
+
+A replacement object contains one toplevel `directive` (or `block`),
+	and may optionally specify some toplevel parameters.
+
+Directives perform some output action, and may contain
+	one or more child directives.
 
 ```yaml
 ---
 # simplistic template example
 # examples/hello.yaml
 replacement:
-  - literal: |
+  - text: text
+    input:
       hello world
 ...
 ```
@@ -25,27 +31,9 @@ $ replacement -t examples/hello.yaml
 hello world
 ```
 
-A *variable* is any `key: value` pair where `key` is not a Replacement keyword.
-Variables encountered during parsing are assigned
-	to the run-time substitutions dictionary, called the *lexicon*.
-They are then available when processing text (aka: variable substitution).
+A schema of replacement directives is contained in [schema.yaml](./schema.yaml).
 
-```yaml
----
-# variable substitution example
-# examples/format.yaml
-vers: 1.0
-replacement:
-  - literal: |
-      file version {vers}
-  - process: format
-...
-```
-
-```bash
-$ replacement -t examples/format.yaml
-file version 1.0
-```
+**TODO:** below here all is broken; rewrite!
 
 Note the explicit `process` *directive* in the example above.
 
