@@ -1,84 +1,81 @@
 ---
 ##
-# replacement - all-inclusive template as demonstration
+# replacement - execute a list of blocks
 ##
 replacement:
-  # output text, sourced literally from objects in 'input'
-  text: text
-  input:
-    # set the metadata key 'version' from the literal value 'v1.5'
-    - meta: text
-      spec: version
-      input: v1.5
+  # set the metadata key 'version' from the literal value 'v1.5'
+  - meta: text
+    spec: version
+    input: v1.5
 
-    # set the metadata key 'maj_ver' from the result of an eval();
-    # perform str.format() substitution on the value of all keys in the block
-    # (including 'input') before parsing the block
-    - meta: eval
-      prep: format
-      spec: maj_ver
-      input: |
-        "{version}".split('.')[0]
+  # set the metadata key 'maj_ver' from the result of an eval();
+  # perform str.format() substitution on the value of all keys in the block
+  # (including 'input') before parsing the block
+  - meta: eval
+    prep: format
+    spec: maj_ver
+    input: |
+      "{version}".split('.')[0]
 
-    # - parse a JSON, a yaml literal and a yaml file into dictionaries
-    # - merge the dictionaries
-    # - output yaml
-    # - run '$' style string substitution on the output
-    - text: dict
-      spec: yaml
-      proc: substitute
-      input:
-        - dict: text
-          parse: json
-          input: |
-            { "hi": 5 }
-        - dict: text
-          parse: yaml
-          input: |
-            ---
-            this: document version $version
-            ...
-        - dict: file
-          parse: yaml
-          input: a_file.yaml
+  # - parse a JSON, a yaml literal and a yaml file into dictionaries
+  # - merge the dictionaries
+  # - output yaml
+  # - run '$' style string substitution on the output
+  - text: dict
+    spec: yaml
+    proc: substitute
+    input:
+      - dict: text
+        parse: json
+        input: |
+          { "hi": 5 }
+      - dict: text
+        parse: yaml
+        input: |
+          ---
+          this: document version $version
+          ...
+      - dict: file
+        parse: yaml
+        input: a_file.yaml
 
-    # concatenate some literals and the contents of a file into 'unsanitized'
-    - meta: text
-      spec: unsanitized
-      input:
-        - text: text
-          input: |
-            # leading test before input
-        - text: file
-          input: some_script.rsc
-        - text: text
-          input:
-            trailing test is good
+  # concatenate some literals and the contents of a file into 'unsanitized'
+  - meta: text
+    spec: unsanitized
+    input:
+      - text: text
+        input: |
+          # leading test before input
+      - text: file
+        input: some_script.rsc
+      - text: text
+        input:
+          trailing test is good
 
-    # feed the contents of 'unsanitized' as the input to a function,
-    # expect a text output
-    - text: function
-      args: mikrotik.MikroTik.sanitize
-      input:
-        - text: meta
-          input: unsanitized
+  # feed the contents of 'unsanitized' as the input to a function,
+  # expect a text output
+  - text: function
+    args: mikrotik.MikroTik.sanitize
+    input:
+      - text: meta
+        input: unsanitized
 
-    # execute a utility yielding yaml and parse its output into a dictionary
-    # merge this dictionary with another created by parsing a yaml literal
-    # output the merged dictionary as a yaml
-    - text: dict
-      spec: yaml
-      input:
-        - dict: exec
-          parse: yaml
-          prep: format
-          input: |
-            # this returns valid YAML
-            template.py --param={version}
-        - dict: text
-          parse: yaml
-          input: |
-            ---
-            format: yaml
-            ...
+  # execute a utility yielding yaml and parse its output into a dictionary
+  # merge this dictionary with another created by parsing a yaml literal
+  # output the merged dictionary as a yaml
+  - text: dict
+    spec: yaml
+    input:
+      - dict: exec
+        parse: yaml
+        prep: format
+        input: |
+          # this returns valid YAML
+          template.py --param={version}
+      - dict: text
+        parse: yaml
+        input: |
+          ---
+          format: yaml
+          ...
 ...

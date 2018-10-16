@@ -1,0 +1,8 @@
+---
+# read from file
+# examples/file.yaml
+replacement:
+  - text: file
+    input:
+      hello.out
+...

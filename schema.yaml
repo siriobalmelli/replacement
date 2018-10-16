@@ -10,10 +10,10 @@
 # proc          :: perform variable substitution on output
 
 ##
-# format of a block/directive
+# format of a block
 ##
 block:
-  - yield: inputType
+  - yield: inputType  # this is a directive
     spec: specVal
     args: argsVal
     parse: parseVal
@@ -24,11 +24,17 @@ block:
 # definition of schema elements
 ##
 schema:
-  # 'input' : where to source data
-  inputType:
-    # we can input everything we output (see 'yield' below)
+  # 'yield' : what to output (how to format output)
+  yield:
     - text  # text: a list of newline-separated strings
     - dict  # a dictionary of key-value pairs
+    - meta  # output nothing: set a metadata (substitution dictionary) variable
+
+  # 'input' : where to source data
+  inputType:
+    # we can input everything we output (see 'yield' above)
+    - text
+    - dict
     - meta  # a key-value pair retrieved from substitutions dictionary
     # we can also input from other sources
     - file  # open a file on disk
@@ -36,7 +42,7 @@ schema:
     - function  # import and then call call a function
     - exec  # subprocess execution (usually bash)
 
-  inputVal: per_input_specific
+  inputVal: input_specific
 
   # optional 'args' : input-specific parameters
   argsVal:
@@ -55,11 +61,6 @@ schema:
     - format  # use python str.format()
     - substitute  # use string.Template().substitute
     - safe_substitute  # use string.Template().safe_substitute
-
-  # 'yield' : what to output (how to format output)stored/
-  # NOTE 'meta' inserts output into substitutions dictionary
-  # (used by mangle directives)
-  yield: [text, dict, meta]
 
   # optional 'spec' : specific per-yield output specifications
   specVal:
