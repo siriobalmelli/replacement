@@ -36,7 +36,7 @@ def dic_merge(in_to, *out_of):
     return in_to
 
 
-def lin_sub(lin=[], meta={'eol': '\n'}, method='literal'):  # pylint: disable=dangerous-default-value
+def lin_sub(lin=[], meta={}, method='literal'):  # pylint: disable=dangerous-default-value
     '''lin_sub()
     Clean up or substitute each text line according to 'method'.
     NOTE: 'meta' must contain an "eol" entry.
@@ -75,7 +75,7 @@ def do_block(blk={}, meta={}):  # pylint: disable=dangerous-default-value
 
     inp = blk['input']  # it is a hard fault not to have 'input'
     if isinstance(inp, str):
-        inputs = {'text': lambda: [lin for lin in inp.split(meta['eof'])],
+        inputs = {'text': lambda: [lin for lin in inp.split(meta['eol'])],
                   'dict': None,
                   'meta': None,
                   'file': lambda: get_file(inp),
@@ -96,96 +96,45 @@ def do_block(blk={}, meta={}):  # pylint: disable=dangerous-default-value
         assert False, 'input type ' + type(inp) + ' invalid'
 
     # get 'yield: input' function pair
-    do_yield, do_input = [(name, blk[name])
-                          for name in blk.keys()
-                          if name in yields and blk[name] in inputs][0:1]
+    do_yield, do_input = [(yld, inp)
+                          for yld, inp in blk.items()
+                          if yld in yields and inp in inputs][0]
     assert do_yield and do_input, 'broken yield statement'  # TODO: debug printing
     do_yield = yields[do_yield]
     do_input = inputs[do_input]
 
     return do_yield(do_input())
 
-class Replacement():
-    '''Replacement
-    A Replacement instance is comprised of:
-        - the 'replacement' object: the template
-        - the 'meta' dictionary: string substitutions, general variables
+
+def replacement(path={}, meta={}):  # pylint: disable=dangerous-default-value
+    '''replacement()
+    path    :   path to the YAML template
+                to be opened and processed
+    meta    :   optional dictionary of key:value pairs
+                to be used in processing 'path'
     '''
-    tpl = {}  # type: dict
-    meta = {  # substitutions dictionary, containing sane formatting defaults
-        'eol': '\n'
-    }
-    out = []  # type: list
+    # template file
+    with open(path, 'r') as fil:
+        template = ruamel.yaml.load(fil, Loader=ruamel.yaml.Loader)
+    # TODO: proper error printing
+    assert 'replacement' in template, 'no "replacement" object in ' + path
+    template = template['replacement']
 
+    # paths are relative to template: chdir to template dir
+    chd = os.path.dirname(path)
+    if chd:
+        cwd = os.getcwd()
+        os.chdir(chd)
 
-    def __init__(self, templatePath, metadata={}):  # pylint: disable=dangerous-default-value
-        '''__init__()
+    # sane default for line endings
+    if 'eol' not in meta:
+        meta['eol'] = '\n'
 
-        templateFile    :   path to the YAML template
-                            to be opened and processed
-        meta            :   optional dictionary of key:value pairs
-                            to be used in processing 'templateFile'
-        '''
-        self.meta.update(metadata)
+    out, meta = [line for block in template for line in do_block(block, meta)]
 
-        # template file
-        with open(templatePath, 'r') as fil:
-            dic = ruamel.yaml.load(fil, Loader=ruamel.yaml.Loader)
-        # TODO: proper error printing
-        assert 'replacement' in dic, 'no "replacement" object in ' + templatePath
-        self.tpl = dic['replacement']
-
-        # paths are relative to template: chdir to template dir
-        chd = os.path.dirname(templatePath)
-        if chd:
-            cwd = os.getcwd()
-            os.chdir(chd)
-
-        self.out = [line
-                    for block in self.tpl
-                    for line in self.block(block)]
-
-        if chd:
-            os.chdir(cwd)
-
-
-    def render(self):
-        '''render()
-        return the rendered template as a list of lines
-        '''
-        return self.meta['eol'].join(self.out)
-
-    def block(self, block={}):  # pylint: disable=dangerous-default-value
-        '''block()
-        Recursively parse/execute 'block';
-        yield/return type is dictated by the block itself.
-
-        NOTE: refers to (and potentially alters) self.meta
-        '''
-        eol = self.meta['eol']  # legibility
-
-        # TODO: preprocess
-
-        # parse directive e.g. 'text: file'
-        out = [(v, block[k]) for k, v in {'text': list, 'dict': dict, 'meta': None}.items()
-               if k in block]
-        # TODO: proper error printing
-        assert len(out) == 1, '''exactly one 'yield' directive per block'''
-        sink, source = out[0]
-
-        # TODO: input
-        if source == 'text':
-            source = block['input'].split(eol)
-        elif source == 'file':
-            with open(block['input'], 'r') as fil:
-                source = [lin.strip(eol) for lin in fil]
-
-        # TODO: yield
-        if sink is list and isinstance(source, list):
-            return source
-
-        # TODO: postprocess
-        return []
+    if chd:
+        os.chdir(cwd)
+    return meta['eol'].join(out)
 
 
 def main():
@@ -218,8 +167,7 @@ NOTE: separation into key:value is done at the first ':' ONLY;
 
     assert not args.verbose, 'verbose not implemented'
 
-    rep = Replacement(args.yaml, meta)
-    print(rep.render())
+    print(replacement(args.yaml, meta))
 
 #   main
 if __name__ == "__main__":
