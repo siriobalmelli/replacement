@@ -28,6 +28,14 @@ def dic_sub(dic={}, meta={}, method='format'):  # pylint: disable=dangerous-defa
             for k, v in dic}
 
 
+def dic_merge(in_to, *out_of):
+    ''''dic_merge()
+    Copy 'in_to'; merge each dictionary in 'out_of' into this copy and return it.
+    '''
+    # TODO: implement
+    return in_to
+
+
 def lin_sub(lin=[], meta={'eol': '\n'}, method='literal'):  # pylint: disable=dangerous-default-value
     '''lin_sub()
     Clean up or substitute each text line according to 'method'.
@@ -41,6 +49,61 @@ def lin_sub(lin=[], meta={'eol': '\n'}, method='literal'):  # pylint: disable=da
     sub = methods.get(method) or methods.get('literal')
     return [sub(lin, meta).rstrip(meta['eol']) for lin in lin]
 
+
+def get_file(path):
+    '''get_file()
+    Return lines in file at 'path' as a list of lines.
+    '''
+    with open(path, 'r') as fil:
+        return [lin for lin in fil]
+
+
+def do_block(blk={}, meta={}):  # pylint: disable=dangerous-default-value
+    ''''do_block()
+    Process a block.
+    Recursive.
+    Returns ('out', 'meta').
+    '''
+    yields = {'text': lambda output: (lin_sub(output, meta, blk.get('proc')),
+                                      meta),
+              'dict': lambda output: (dic_sub(output, meta, blk.get('proc')),
+                                      meta),
+              'meta': lambda output: (None,
+                                      dic_merge(dic_sub(output, meta, blk.get('proc')),
+                                                meta))
+             }
+
+    inp = blk['input']  # it is a hard fault not to have 'input'
+    if isinstance(inp, str):
+        inputs = {'text': lambda: [lin for lin in inp.split(meta['eof'])],
+                  'dict': None,
+                  'meta': None,
+                  'file': lambda: get_file(inp),
+                  'eval': None,
+                  'function': None,
+                  'exec': None
+                 }
+    elif isinstance(inp, list):
+        inputs = {'text': None,
+                  'dict': None,
+                  'meta': None,
+                  'file': None,
+                  'eval': None,
+                  'function': None,
+                  'exec': None
+                 }
+    else:
+        assert False, 'input type ' + type(inp) + ' invalid'
+
+    # get 'yield: input' function pair
+    do_yield, do_input = [(name, blk[name])
+                          for name in blk.keys()
+                          if name in yields and blk[name] in inputs][0:1]
+    assert do_yield and do_input, 'broken yield statement'  # TODO: debug printing
+    do_yield = yields[do_yield]
+    do_input = inputs[do_input]
+
+    return do_yield(do_input())
 
 class Replacement():
     '''Replacement
