@@ -12,6 +12,36 @@ import string
 import ruamel.yaml
 
 
+def dic_sub(dic={}, meta={}, method='format'):  # pylint: disable=dangerous-default-value
+    '''dic_sub()
+    Substitute all string values in 'dic' against 'meta' dictionary using 'method'.
+    Does NOT recurse.
+    '''
+    methods = {'format': lambda stg, dic: stg.format(**dic),
+               'substitute': lambda stg, dic: string.Template(stg).substitute(**dic),
+               'safe_substitute' : lambda stg, dic: string.Template(stg).safe_substitute(**dic)
+              }
+    sub = methods.get(method)
+    if not sub:
+        return dic
+    return {k: sub(v, meta) if isinstance(v, str) else v
+            for k, v in dic}
+
+
+def lin_sub(lin=[], meta={'eol': '\n'}, method='literal'):  # pylint: disable=dangerous-default-value
+    '''lin_sub()
+    Clean up or substitute each text line according to 'method'.
+    NOTE: 'meta' must contain an "eol" entry.
+    '''
+    methods = {'literal': lambda stg, dic: stg,
+               'format': lambda stg, dic: stg.format(**dic),
+               'substitute': lambda stg, dic: string.Template(stg).substitute(**dic),
+               'safe_substitute' : lambda stg, dic: string.Template(stg).safe_substitute(**dic)
+              }
+    sub = methods.get(method) or methods.get('literal')
+    return [sub(lin, meta).rstrip(meta['eol']) for lin in lin]
+
+
 class Replacement():
     '''Replacement
     A Replacement instance is comprised of:
