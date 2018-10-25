@@ -50,6 +50,7 @@ schema:
     function: function_name
 
   # optional 'parse' : expected input format (how input is parsed/handled)
+  # TODO: possibly redundant, we may be smarter than this
   parseVal: [lines, json, yaml]  # default value is 'lines'
 
   # substitution directives:

@@ -99,13 +99,11 @@ def merge_dict(in_to, *out_of):
             raise Exception("cannot merge type '{0}'".format(type(obj)))
     return in_to
 
-def merge_line(in_to, out_of):
+def merge_line(in_to, *out_of):
     '''merge_line()
-    Concatenate 2 lists of lines
+    Concatenate multiple lists
     '''
-    in_to = in_to or []
-    out_of = out_of or []
-    return in_to + out_of
+    return (in_to or []) + [lin for lst in out_of for lin in lst]
 
 
 def get_file(path):
@@ -116,13 +114,6 @@ def get_file(path):
         return [lin for lin in fil]
 
 
-def render_string(lst, meta):
-    '''render_string()
-    stringify a list of lines
-    '''
-    return meta['eol'].join(lst)
-
-
 def do_block(blk, meta):
     ''''do_block()
     Process a block.
@@ -130,47 +121,74 @@ def do_block(blk, meta):
     Returns ('out', 'meta').
     '''
     blk = blk or {}
+
     # Preprocess block before parsing it.
-    # Will string-coerce scalars in the block whether a preprocessing directive
+    # Will string-coerce scalars in the block whether a 'prep' directive
     # was given or not.
     blk = subst_dict(blk, meta, blk.get('prep'))
 
-    def flatten(value):
+    eol = meta['eol']  # it is a hard fault not to have 'eol' in meta
+
+    # transforms
+    # NOTE: "alors" is "a list or string"
+    def listify(alors):
+        '''listify()
+        '''
+        if isinstance(alors, list):
+            return alors
+        return [lin for lin in alors.strip(eol).split(eol)]
+    def flatten(alors):
         '''flatten()
         '''
-        if isinstance(value, list) and len(value) is 1:
-            value = value[0]
-        return value
+        if isinstance(alors, list):
+            alors = eol.join(alors)
+        return alors
+    def dictify(unk):
+        '''dictify()
+        '''
+        # dictionary is pass-through
+        if isinstance(unk, dict):
+            return unk
+        unk = flatten(unk)
+        # attempt to parse as JSON or YAML (good old "program by exception")
+        try:
+            return json.loads(unk)
+        except:  # pylint: disable=bare-except
+            pass
+        try:
+            return ruamel.yaml.load(unk, Loader=ruamel.yaml.Loader)
+        except:  # pylint: disable=bare-except
+            pass
+        # last-resort: return as-is
+        return unk
 
-    # 'im' is "intermediate" (denoting it should be run through normalize() below
-    yields = {'text': lambda im: (subst_line(im, meta, blk.get('proc')),
+    # 'im' is "intermediate", denoting a string which may or may not
+    yields = {'text': lambda im: (subst_line(listify(im), meta, blk.get('proc')),
                                   meta),
-              'dict': lambda im: (subst_dict(im, meta, blk.get('proc')),
+              'dict': lambda im: (subst_dict(dictify(im), meta, blk.get('proc')),
                                   meta),
               'meta': lambda im: (None,
                                   # merge into 'meta' at 'spec' key (clobber meta)
-                                  merge_dict(subst_dict({blk['spec']: flatten(im)},
+                                  merge_dict(subst_dict({blk['spec']: dictify(im)},
                                                         meta,
                                                         blk.get('proc')),
                                              meta))
              }
 
-    inp = blk['input']  # it is a hard fault not to have 'input'
-    if isinstance(inp, str):  # relies on string coercion in "preprocess" above
-        inputs = {'text': lambda: [lin for lin in inp.strip(meta['eol']).split(meta['eol'])],
-                  'dict': None,
-                  'meta': None,
-                  'file': lambda: get_file(inp),
-                  'eval': None,
-                  'function': None,
-                  'exec': None
-                 }
-    elif isinstance(inp, list):
+    inp = blk['input']  # it is a hard fault not to have 'input' in block
+    if isinstance(inp, list):
         inputs = {'text': lambda: do_recurse(inp, meta, merge_line),
                   'dict': lambda: do_recurse(inp, meta, merge_dict)
                  }
-    else:
-        assert False, 'input type ' + str(type(inp)) + ' invalid'
+    else:  # relies on string coercion in "preprocess" above
+        inputs = {'text': lambda: inp,
+                  'dict': lambda: inp,
+                  'meta': None,
+                  'file': lambda: get_file(inp),
+                  'eval': lambda: eval(inp),  # pylint: disable=eval-used
+                  'function': None,
+                  'exec': None
+                 }
 
     # get 'yield: input' function pair
     do_yield, do_input = [(yld, inp)
@@ -235,7 +253,7 @@ def replacement(path, meta):
 
     if chd:
         os.chdir(cwd)
-    return render_string(out, meta)
+    return meta['eol'].join(out)
 
 
 def main():
