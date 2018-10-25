@@ -1,0 +1,4 @@
+version 1.1
+version 1.0 is clobbered in inner scope
+hello world
+outer version is still 1.1

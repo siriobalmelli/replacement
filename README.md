@@ -97,7 +97,47 @@ schema:
 ...
 ```
 
-**TODO:** multi-block example.
+Blocks can nest:
+
+```yaml
+---
+# nesting blocks
+# examples/nesting.yaml
+replacement:
+  # insert '1.1' into metadata (substitutions dict) under the key 'version'
+  - meta: text
+    spec: version
+    input: 1.1
+  - text: text
+    proc: format
+    input: |
+      version {version}
+  - text: text
+    input:
+      # metadata additions/changes seen by later blocks and any children,
+      # but seen outside this list
+      - meta: text
+        spec: version
+        input: 1.0
+      - text: text
+        proc: format
+        input: |
+          version {version} is clobbered in inner scope
+      - text: file
+        input:
+          hello.out
+  - text: text
+    proc: format
+    input: |
+      outer version is still {version}
+...
+```
+
+```bash
+$ replacement -t examples/nesting.yaml
+hello world
+```
+
 
 Blocks are executed in sequence.
 
