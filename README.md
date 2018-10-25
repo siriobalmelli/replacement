@@ -97,7 +97,7 @@ schema:
 ...
 ```
 
-Blocks can nest:
+Blocks are executed in sequence, and may nest:
 
 ```yaml
 ---
@@ -138,87 +138,11 @@ $ replacement -t examples/nesting.yaml
 hello world
 ```
 
+Blocks may contain objects (dictionaries) which may be:
+    - valid YAML/JSON objects under 'input'
+    -
 
-Blocks are executed in sequence.
 
-**TODO:** everything below here is old and needs to be rewritten
-
-```yaml
----
-# show blocks being executed in sequence
-# examples/sequence.yaml
-vers: 1.0
-replacement:
-  # 'process' directive sees no lines in buffer
-  - process: format
-  # 'literal' then outputs to buffer
-  - literal: |
-      file version {vers}
-  # no further directives: buffer is printed
-...
-```
-
-```bash
-$ replacement -t examples/sequence.yaml
-file version {vers}
-```
-
-Each directive in a `replacement` list sees the *buffer* and lexicon state
-  as modified by previous directives.
-Directives may either `append` to or `replace` the buffer;
-  each directive has an intuitive default to keep the template terse.
-These may be overwritten with the `buffer` *parameter*:
-
-```yaml
----
-# show buffer mechanics
-# examples/buffer.yaml
-vers: 1.0
-replacement:
-  - literal: |
-      hello
-  # replaces buffer contents; the default would be to append to buffer
-  - literal: |
-      file version {vers}
-    buffer: replace
-  # appends formatted text to buffer: the default would be to replace it
-  - process: format
-    buffer: append
-...
-```
-
-```bash
-$ replacement -t examples/buffer.yaml
-file version {vers}
-file version 1.0
-```
-
-In the above example, `buffer` is a parameter: a keyword used to modify a directive.
-
-The `replacement` keyword is also a directive.
-This allows for recursion, which is useful in limiting how much (aka what parts)
-  of the buffer and lexicon that directives can see and affect.
-
-```yaml
----
-# show recursion
-# examples/recursion.yaml
-vers: 1.0
-name: recursion
-replacement:
-  - replacement:
-      - literal:
-          v {vers} substituted outside replacement block
-      - file: |
-          v{vers}.txt
-        vers: 1  # clobber 'vers' in this 'replacement' block only
-        substitute: format  # substitute the value of 'file' before evaluating
-      - process: safe_substitute  # use string.template for '$var' constructs
-  - literal: |
-      file version {vers}
-  - process: format
-...
-```
 
 ```bash
 $ cat examples/v1.txt

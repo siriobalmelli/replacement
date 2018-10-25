@@ -9,7 +9,17 @@ import json
 import importlib
 import os
 import string
-import ruamel.yaml
+from ruamel.yaml import YAML
+from ruamel.yaml.compat import StringIO
+
+
+# A shiny global ruamel.yaml object with sane options (aka: dumps should pass yamllint)
+YM = YAML()
+YM.indent(mapping=2, sequence=4, offset=2)
+YM.explicit_start = True
+YM.explicit_end = True
+YM.allow_unicode = True
+YM.preserve_quotes = True
 
 
 def subst_dict(dic, meta, method):  # pylint: disable=dangerous-default-value
@@ -137,41 +147,52 @@ def do_block(blk, meta):
         if isinstance(alors, list):
             return alors
         return [lin for lin in alors.strip(eol).split(eol)]
-    def flatten(alors):
-        '''flatten()
+    def stringify(alors):
+        '''stringify()
         '''
+        # lists are flattened
         if isinstance(alors, list):
             alors = eol.join(alors)
+        # dictionaries are dumped to YAML or, if requested, JSON
+        elif isinstance(alors, dict):
+            if blk.get('spec') == 'json':
+                return json.dumps(alors)
+            stream = StringIO()
+            YM.dump(alors, stream)
+            return stream.getvalue()
+        # scalars returned as-is (string coercion for literal inputs already done in 'prep')
         return alors
     def dictify(unk):
         '''dictify()
+        'unk' is "unknown"
         '''
-        # dictionary is pass-through
-        if isinstance(unk, dict):
+        if isinstance(unk, dict):  # dictionary is pass-through
             return unk
-        unk = flatten(unk)
-        # attempt to parse as JSON or YAML (good old "program by exception")
-        try:
-            return json.loads(unk)
+        unk = stringify(unk)
+        try:  # JSON is *always* a valid subset of YAML
+            ret = YM.load(unk)
+            if isinstance(ret, dict or list):  # parsing only useful if it yields an object
+                return ret
         except:  # pylint: disable=bare-except
             pass
-        try:
-            return ruamel.yaml.load(unk, Loader=ruamel.yaml.Loader)
-        except:  # pylint: disable=bare-except
-            pass
-        # last-resort: return as-is
-        return unk
+        # scalars are treated a values in a dictionary with 'spec' as key
+        return {blk['spec']: unk}
 
-    # 'im' is "intermediate", denoting a string which may or may not
+    # 'im' is "intermediate", denoting a value which may be:
+    # 1. a string
+    # 2. a list of strings
+    # 3. either of those, but containing:
+    #   - a YAML string
+    #   - a JSON string
+    #   - a dictionary value where 'spec' should be used as key
+    # 4. a dictionary object directly encoded in the YAML
     yields = {'text': lambda im: (subst_line(listify(im), meta, blk.get('proc')),
                                   meta),
               'dict': lambda im: (subst_dict(dictify(im), meta, blk.get('proc')),
                                   meta),
               'meta': lambda im: (None,
                                   # merge into 'meta' at 'spec' key (clobber meta)
-                                  merge_dict(subst_dict({blk['spec']: dictify(im)},
-                                                        meta,
-                                                        blk.get('proc')),
+                                  merge_dict(subst_dict(dictify(im), meta, blk.get('proc')),
                                              meta))
              }
 
@@ -182,8 +203,8 @@ def do_block(blk, meta):
                  }
     else:  # relies on string coercion in "preprocess" above
         inputs = {'text': lambda: inp,
-                  'dict': lambda: inp,
-                  'meta': None,
+                  'dict': lambda: inp,  # render YAML/JSON ?
+                  'meta': lambda: inp,
                   'file': lambda: get_file(inp),
                   'eval': lambda: eval(inp),  # pylint: disable=eval-used
                   'function': None,
@@ -202,10 +223,11 @@ def do_block(blk, meta):
     #print(blk)
     #print(meta)
     #print(inp)
-    ret = do_yield(do_input())
+    #ret = do_yield(do_input())
     #print(ret)
     #print('-----------------')
-    return ret
+    #return ret
+    return do_yield(do_input())
 
 def do_recurse(blk_list=[], meta={}, merge_func=merge_line):  # pylint: disable=dangerous-default-value
     '''do_recurse()
@@ -233,7 +255,7 @@ def replacement(path, meta):
     '''
     # template file
     with open(path, 'r') as fil:
-        template = ruamel.yaml.load(fil, Loader=ruamel.yaml.Loader)
+        template = YM.load(fil)
     # TODO: proper error printing
     assert 'replacement' in template, 'no "replacement" object in ' + path
     template = template['replacement']
