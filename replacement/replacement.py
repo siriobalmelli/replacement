@@ -4,6 +4,7 @@
 python3 templating tool.
 (c) 2018 Sirio Balmelli
 '''
+name = "replacement"
 
 import importlib
 import os

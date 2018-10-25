@@ -6,17 +6,17 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="replacement",
-    version="0.1.0",
+    version="0.2rc1",
     author="Sirio Balmelli",
     author_email="sirio@b-ad.ch",
     description="Replacement is a python utility that parses a yaml template and outputs text.",
-	license='Apache',
+    license='Apache',
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/siriobalmelli/replacement",
     packages=setuptools.find_packages(),
-	install_requires=[ 'ruamel.yaml' ], 
-	python_requires='>=3',
+    install_requires=['ruamel.yaml'],
+    python_requires='>=3.5',
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: Apache Software License",
