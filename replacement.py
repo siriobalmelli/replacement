@@ -12,32 +12,27 @@ import string
 import ruamel.yaml
 
 
-def dic_sub(dic={}, meta={}, method='format'):  # pylint: disable=dangerous-default-value
-    '''dic_sub()
-    Substitute all string values in 'dic' against 'meta' dictionary using 'method'.
-    Does NOT recurse.
+def subst_dict(dic={}, meta={}, method='literal'):  # pylint: disable=dangerous-default-value
+    '''subst_dict()
+    String-coerce all string-able values in 'dic', optionally substitute them
+    against 'meta' using 'method'.
+    Does NOT recurse into sub-objects or lists.
     '''
-    methods = {'format': lambda stg, dic: stg.format(**dic),
+    print('--- subst_dict: ---')
+    print(dic)
+    print(meta)
+    print('-------------------')
+    methods = {'literal': lambda stg, dic: stg,
+               'format': lambda stg, dic: stg.format(**dic),
                'substitute': lambda stg, dic: string.Template(stg).substitute(**dic),
                'safe_substitute' : lambda stg, dic: string.Template(stg).safe_substitute(**dic)
               }
-    sub = methods.get(method)
-    if not sub:
-        return dic
-    return {k: sub(v, meta) if isinstance(v, str) else v
-            for k, v in dic}
+    sub = methods.get(method) or methods.get('literal')
+    return {k: sub(str(v), meta) if isinstance(v, (str, float, int)) else v
+            for k, v in dic.items()}
 
-
-def dic_merge(in_to, *out_of):
-    ''''dic_merge()
-    Copy 'in_to'; merge each dictionary in 'out_of' into this copy and return it.
-    '''
-    # TODO: implement
-    return in_to
-
-
-def lin_sub(lin=[], meta={}, method='literal'):  # pylint: disable=dangerous-default-value
-    '''lin_sub()
+def subst_line(lin=[], meta={}, method='literal'):  # pylint: disable=dangerous-default-value
+    '''subst_line()
     Clean up or substitute each text line according to 'method'.
     NOTE: 'meta' must contain an "eol" entry.
     '''
@@ -48,6 +43,67 @@ def lin_sub(lin=[], meta={}, method='literal'):  # pylint: disable=dangerous-def
               }
     sub = methods.get(method) or methods.get('literal')
     return [sub(lin, meta).rstrip(meta['eol']) for lin in lin]
+
+
+def merge_dict(in_to, *out_of):  # pylint: disable=dangerous-default-value
+    ''''merge_dict()
+    Merge each dictionary in 'out_of' into 'in_to' and return it.
+    '''
+    for obj in out_of:
+        def scalar(thing=None):
+            return thing is None or isinstance(thing, str) or not hasattr(thing, "__len__")
+
+        # expose a uniform way of inserting into 'a'
+        # ... depend on exceptions in case these don't pan out against b's datatype
+        # (putting the "duck" and "cower" firmly into duck-typing).
+        if hasattr(in_to, "update"):
+            def push(key, val=None):
+                '''push()
+                Check (and if kosher, push) key:val into 'in_to' - 'in_to' being a dictionary
+                '''
+                # new keys inserted as-is
+                if key not in in_to:
+                    in_to[key] = val
+                    return
+                # duplicate values ignored
+                if in_to[key] == val:
+                    return
+                # otherwise, merge recursively
+                # NOTE that 2 conflicting scalars will become a list
+                merge_dict(in_to[key], val)
+
+        else:
+            # 'in_to' must be "insertable-into-able"
+            if not hasattr(in_to, "append"):
+                in_to = [in_to]
+            def push(key, val=None):
+                '''push_list()
+                Push into 'in_to' as in_to list.
+                '''
+                if val:
+                    key = {key: val}
+                in_to.append(key)
+
+        # dictionary (key: value) types have an "items" function
+        if hasattr(obj, "items"):
+            for key, val in obj.items():
+                push(key, val)
+        # other iterable types are, well, iterable :P
+        elif hasattr(obj, "__iter__"):
+            for val in obj:
+                push(val)
+        # scalar?
+        elif scalar(obj):
+            push(obj)
+        # garbage!
+        else:
+            raise Exception("cannot merge type '{0}'".format(type(obj)))
+
+def merge_line(in_to=[], out_of=[]):  # pylint: disable=dangerous-default-value
+    '''merge_line()
+    Concatenate 2 lists of lines
+    '''
+    return in_to + out_of
 
 
 def get_file(path):
@@ -64,17 +120,22 @@ def do_block(blk={}, meta={}):  # pylint: disable=dangerous-default-value
     Recursive.
     Returns ('out', 'meta').
     '''
-    yields = {'text': lambda output: (lin_sub(output, meta, blk.get('proc')),
+    # Preprocess block before parsing it.
+    # Will string-coerce scalars in the block whether a preprocessing directive
+    # was given or not.
+    blk = subst_dict(blk, meta, blk.get('prep'))
+
+    yields = {'text': lambda output: (subst_line(output, meta, blk.get('proc')),
                                       meta),
-              'dict': lambda output: (dic_sub(output, meta, blk.get('proc')),
+              'dict': lambda output: (subst_dict(output, meta, blk.get('proc')),
                                       meta),
               'meta': lambda output: (None,
-                                      dic_merge(dic_sub(output, meta, blk.get('proc')),
-                                                meta))
+                                      merge_dict(meta,
+                                                 subst_dict(output, meta, blk.get('proc'))))
              }
 
     inp = blk['input']  # it is a hard fault not to have 'input'
-    if isinstance(inp, str):
+    if isinstance(inp, str):  # relies on string coercion in "preprocess" above
         inputs = {'text': lambda: [lin for lin in inp.split(meta['eol'])],
                   'dict': None,
                   'meta': None,
@@ -84,16 +145,11 @@ def do_block(blk={}, meta={}):  # pylint: disable=dangerous-default-value
                   'exec': None
                  }
     elif isinstance(inp, list):
-        inputs = {'text': None,
-                  'dict': None,
-                  'meta': None,
-                  'file': None,
-                  'eval': None,
-                  'function': None,
-                  'exec': None
+        inputs = {'text': lambda: do_recurse(inp, meta, merge_line),
+                  'dict': lambda: do_recurse(inp, meta, merge_dict)
                  }
     else:
-        assert False, 'input type ' + type(inp) + ' invalid'
+        assert False, 'input type ' + str(type(inp)) + ' invalid'
 
     # get 'yield: input' function pair
     do_yield, do_input = [(yld, inp)
@@ -103,7 +159,29 @@ def do_block(blk={}, meta={}):  # pylint: disable=dangerous-default-value
     do_yield = yields[do_yield]
     do_input = inputs[do_input]
 
-    return do_yield(do_input())
+    print('--- do_block: ---')
+    print(blk)
+    print(meta)
+    print(inp)
+    ret = do_yield(do_input())
+    print(ret)
+    print('-----------------')
+    return ret
+
+def do_recurse(blk_list=[], meta={}, merge_func=merge_line):  # pylint: disable=dangerous-default-value
+    '''do_recurse()
+    Recursively execute a series of blocks:
+    - merging the output of each into the output of the previous
+    - propagating any changes to 'meta' through to successive blocks
+
+    NOTE that we do not, ourselves, return a (potentially modified) 'meta'.
+    '''
+    out = merge_func()  # should return an empty object of the correct type
+    for blk in blk_list:
+        data, meta = do_block(blk, meta)
+        if data:  # may have been a 'meta' block returning no data
+            out = merge_func(out, data)
+    return out
 
 
 def replacement(path={}, meta={}):  # pylint: disable=dangerous-default-value
@@ -130,7 +208,7 @@ def replacement(path={}, meta={}):  # pylint: disable=dangerous-default-value
     if 'eol' not in meta:
         meta['eol'] = '\n'
 
-    out, meta = [line for block in template for line in do_block(block, meta)]
+    out, meta = [line for line in do_recurse(template, meta)]
 
     if chd:
         os.chdir(cwd)
