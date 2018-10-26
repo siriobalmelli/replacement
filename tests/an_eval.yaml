@@ -1,0 +1,18 @@
+---
+# eval and function execution
+# tests/an_eval.yaml
+replacement:
+  # 'eval' returning a dictionary that can me appended to 'meta'
+  - meta: eval
+    input: |
+      {"hello": 5 + 1}
+  - text: text
+    prep: format
+    input: |
+      hello {hello}
+  # eval returning a scalar value
+  - text: eval
+    prep: format
+    input: |
+      {hello}**3
+...

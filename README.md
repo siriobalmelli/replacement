@@ -11,10 +11,14 @@ A *template* is a YAML file containing a `replacement` object.
 
 A replacement object contains a list of `blocks`.
 
+### 1. basic template
+
+A template:
+
 ```yaml
 ---
 # simplistic template example
-# examples/hello.yaml
+# tests/hello.yaml
 replacement:
   - text: text
     input:
@@ -22,8 +26,10 @@ replacement:
 ...
 ```
 
+Executing a template using `replacement.py`:
+
 ```bash
-$ replacement -t examples/hello.yaml
+$ replacement.py -t tests/hello.yaml
 hello world
 ```
 
@@ -34,12 +40,12 @@ Blocks always begin with a `directive`; which specifies:
 In the block above, `text: text` is the directive;
   it specifies the block takes `text` input and outputs `text`.
 
-Here is an example that reads from a file:
+### 2. reading from a file
 
 ```yaml
 ---
 # read from file
-# examples/file.yaml
+# tests/file.yaml
 replacement:
   - text: file
     input:
@@ -48,16 +54,18 @@ replacement:
 ```
 
 ```bash
-$ replacement -t examples/file.yaml
+$ replacement.py -t tests/file.yaml
 hello world
 ```
 
 A few NOTES:
-  - The directive is now `text: file`.
-    This means: "output text, input from a file"
-  - The `input` key is now used for the filename to be read;
+  - The directive in the above block is `text: file`;
+    this means: "output text, input from a file".
+  - The `input` key is used for the filename to be read;
     in the first example `input` was used to store the literal text input.
   - File paths are relative to the path of the template.
+
+### intermission: schema
 
 A schema of all the replacement directives is contained in [schema.yaml](./schema.yaml).
 Here is a snippet showing just the `directive` and `input` portions of a block:
@@ -97,130 +105,209 @@ schema:
 ...
 ```
 
-Blocks are executed in sequence, and may nest:
+### 3. metadata and substitution
+
+The `meta` directive specifies that the output of a block should be inserted
+    into the "substitutions dictionary" (aka: `meta`).
+
+- this implies input must be a valid dictionary
+- replacement will parse YAML or JSON (which is a subset of YAML)
+
+The `proc` keyword specifies that block output should be processed
+    (string substitution).
+Valid `proc` directives are:
+
+- `format` :: `str.format()`
+- `substitute` :: `string.Template().substitute()`
+- `safe_substitute` :: `string.Template().safe_substitute()`
 
 ```yaml
 ---
-# nesting blocks
-# examples/nesting.yaml
+# metadata
+# tests/metadata.yaml
 replacement:
-  # insert '1.1' into metadata (substitutions dict) under the key 'version'
+  # parse 'input' and insert the resulting dictionary into 'meta'
+  - meta: dict
+    # metadata may be given as an object
+    input:
+      version: 1.1
+      tag: my_awesome_tag
   - meta: text
-    spec: version
-    input: 1.1
+    # metadata may be given as text which can be parsed as valid YAML
+    input: |
+      ---
+      message: hello world
+      ...
+  - meta: text
+    # metadata may also be given as JSON
+    input: |
+      { "hi": 5 }
+  # use 'proc' to specify that 'str.format(**meta)' should be run on output
   - text: text
     proc: format
     input: |
-      version {version}
+      v{version} tag "{tag}"
+      message {message}
+      hi {hi}
+...
+```
+
+```bash
+$ replacement.py -t tests/metadata.yaml
+v1.1 tag "my_awesome_tag"
+message hello world
+hi 5
+```
+
+Metadata can also be read from a file.
+
+File `a.json`:
+
+```json
+{
+    "hello": "world",
+	"hi": 5,
+	"list": [ 1, 2, 3, 4 ]
+}
+```
+
+```yaml
+---
+# metadata
+# tests/meta_file.yaml
+replacement:
+  # parse file, inserting result into metadata dictionary
+  - meta: file
+    input:
+      a.json
+  # string substitution with 'proc
+  - text: text
+    proc: format
+    input: |
+      hello {hello}
+      hi {hi}
+      list {list}
+...
+```
+
+```bash
+$ replacement.py -t tests/meta_file.yaml
+hello world
+hi 5
+list [1, 2, 3, 4]
+```
+
+
+### 4. nesting
+
+1. Blocks are executed in sequence, and may nest.
+    - nested blocks may extend/alter `meta`, which will be seen by
+      later blocks or child blocks, but **not** parent blocks.
+
+```yaml
+---
+# nesting and dictionaries
+# tests/nesting.yaml
+replacement:
+  # parse 'input' and insert the resulting dictionary into 'meta'
+  - meta: text
+    input:
+      version: 1.1
+      tag: my_awesome_tag
+  # use 'proc' to specify that 'str.format(**meta)' should be run on output
+  - text: text
+    proc: format
+    input: |
+      v{version} tag "{tag}"
   - text: text
     input:
       # metadata additions/changes seen by later blocks and any children,
       # but seen outside this list
       - meta: text
-        spec: version
-        input: 1.0
+        input:
+          version: 1.0
       - text: text
         proc: format
         input: |
-          version {version} is clobbered in inner scope
+          #v{version} tag "{tag}" (version clobbered in inner scope)
       - text: file
         input:
-          hello.out
+          hello.out  # contains 'hello world'
   - text: text
     proc: format
     input: |
-      outer version is still {version}
+      outer still v{version}
 ...
 ```
 
 ```bash
-$ replacement -t examples/nesting.yaml
+$ replacement -t tests/nesting.yaml
+v1.1 tag "my_awesome_tag"
+#v1.0 tag "my_awesome_tag" (version clobbered in inner scope)
+hello world
+outer still v1.1
+```
+
+### 5. preprocessing
+
+Substitution can also be performed on the values of the block itself
+*before* it is parsed.
+The keyword `prep` is used, with the same semantics as `proc` (above):
+
+```yaml
+---
+# preprocessing
+# tests/prep.yaml
+replacement:
+  - meta: text
+    input: |
+      ---
+      filename: hello.out
+      ...
+  - text: file
+    prep: format
+    input: |
+      {filename}
+...
+```
+
+```bash
+$ replacement -t tests/prep.yaml
 hello world
 ```
 
-Blocks may contain objects (dictionaries) which may be:
-    - valid YAML/JSON objects under 'input'
-    -
+### 6. access to python `eval` and function execution
 
-
-
-```bash
-$ cat examples/v1.txt
-$name v$vers
-$ replacement -t example.yaml
-v 1.0 substituted outside replacement block
-recursion v1
-file version 1.0
+```yaml
+---
+# eval and function execution
+# tests/an_eval.yaml
+replacement:
+  # 'eval' returning a dictionary that can me appended to 'meta'
+  - meta: eval
+    input: |
+      {"hello": 5 + 1}
+  - text: text
+    prep: format
+    input: |
+      hello {hello}
+  # eval returning a scalar value
+  - text: eval
+    prep: format
+    input: |
+      {hello}**3
+...
 ```
 
-The above example has a few details to unpack:
+```bash
+$ replacement -t tests/an_eval.yaml
+hello 6
+216
+```
 
-1. The modifier `substitute` was used to tell Replacement
-  that all values in the current `file` block (e.g. `1` and `v{vers}.txt`)
-  should be subtituted using Python `str.format()` before being parsed.
+### 7. imports and function execution
 
-1. The variable `vers` is clobbered (set to `1` instead of `1.0`).
-This clobbered value of `vers` not seen outside the inner (recursive)
-  `replacement` list.
-
-1. We used a different `process` method: `safe_substitute` from Python's
-  `string.template`.
-The `{vers}` token in `v {vers} substituted outside replacement block`
-  will be output as-is by the `replacement` block and will then
-  be substituted by the later `process` directive, which uses `str.format()`.
-
-## Nomenclature
-
-To avoid ambiguities, certain words are given specific meanings in
-  the documentation and source code comments of this project.
-
-Detailed definitions are introduced in the preceding section, with the word
-  in question *italicized* where first encountered and then where defined.
-A summary table is given below for reference:
-
-| term        | definition                      | usage/example                |
-| ----------- | ------------------------------- | ---------------------------- |
-| Replacement | this python utility             | `$ replacement -t a.yaml`    |
-| template    | YAML processed by Replacement   | [a template](template.yaml)  |
-| lexicon     | runtime dict of key:value pairs | `{ "v": 1.0, "hi": "five" }` |
-| variable    | one key:value pair in template  | `v: 1.0`                     |
-| block       | item in a `replacement` list    | `- literal: "hello"`         |
-| directive   | an action to be taken           | `file: a_file.txt`           |
-| parameter   | modifier to a directive         | `substitute: format`         |
-
-## Architecture
-
-Blocks are processed one at a time, in this order:
-
-1. Variables are first evluated and added to the runtime lexicon
-  - variables may themselves be process
-  - setting a variable again clobbers (replaces) the original value
-
-1. Directives are then processed sequentially.
-  Directives may:
-- add/set variables in the lexicon:
-
-  ```yaml
-  - literal: |
-      This text will be output literally.
-  ```
-
-- output text
-- process previously output text
-- provide a recursive block
-
-Some differences between Replacement and other templating systems:
-
-1. Processed sequentially (imperative, not declarative):
-  - terse and intuitive grammar
-  - fast (single-pass) processing
-  - inconsistencies permitted (e.g. clobbering/changing variables mid-flight)
-  - self-substitution (values in the template itself can be Replaced at runtime)
-
-1. Powerful text transformation/replacement facilities
-
-1. Template is "outermost":
-- a template *may* contain some or all of the output (or may generate/source
+**TODO**
 
 ## TODO
 

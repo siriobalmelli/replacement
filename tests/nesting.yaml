@@ -1,15 +1,17 @@
 ---
-# nesting blocks
-# examples/nesting.yaml
+# nesting and dictionaries
+# tests/nesting.yaml
 replacement:
-  # insert '1.1' into metadata (substitutions dict) under the key 'version'
+  # parse 'input' and insert the resulting dictionary into 'meta'
   - meta: text
     input:
       version: 1.1
+      tag: my_awesome_tag
+  # use 'proc' to specify that 'str.format(**meta)' should be run on output
   - text: text
     proc: format
     input: |
-      version {version}
+      v{version} tag "{tag}"
   - text: text
     input:
       # metadata additions/changes seen by later blocks and any children,
@@ -20,12 +22,12 @@ replacement:
       - text: text
         proc: format
         input: |
-          version {version} is clobbered in inner scope
+          #v{version} tag "{tag}" (version clobbered in inner scope)
       - text: file
         input:
-          hello.out
+          hello.out  # contains 'hello world'
   - text: text
     proc: format
     input: |
-      outer version is still {version}
+      outer still v{version}
 ...

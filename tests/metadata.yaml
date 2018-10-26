@@ -1,0 +1,28 @@
+---
+# metadata
+# tests/metadata.yaml
+replacement:
+  # parse 'input' and insert the resulting dictionary into 'meta'
+  - meta: dict
+    # metadata may be given as an object
+    input:
+      version: 1.1
+      tag: my_awesome_tag
+  - meta: text
+    # metadata may be given as text which can be parsed as valid YAML
+    input: |
+      ---
+      message: hello world
+      ...
+  - meta: text
+    # metadata may also be given as JSON
+    input: |
+      { "hi": 5 }
+  # use 'proc' to specify that 'str.format(**meta)' should be run on output
+  - text: text
+    proc: format
+    input: |
+      v{version} tag "{tag}"
+      message {message}
+      hi {hi}
+...

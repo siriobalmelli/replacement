@@ -43,7 +43,7 @@ def subst_dict(dic, meta, method):  # pylint: disable=dangerous-default-value
                'safe_substitute' : lambda stg, dic: string.Template(stg).safe_substitute(**dic)
               }
     sub = methods.get(method) or methods.get('literal')
-    return {k: sub(str(v), meta) if isinstance(v, (str, float, int)) else v
+    return {k: (sub(str(v), meta).rstrip(EOL) if isinstance(v, (str, float, int)) else v)
             for k, v in dic.items()}
 
 def subst_line(lin, meta, method):
@@ -186,8 +186,8 @@ def stringify(alors, as_json=False):
         stream = StringIO()
         YM.dump(alors, stream)
         return stream.getvalue()
-    # scalars returned as-is (string coercion for literal inputs already done in 'prep')
-    return alors
+    # scalars returned stringified
+    return str(alors)
 
 def dictify(unk):
     '''dictify()
@@ -253,7 +253,7 @@ def do_block(blk, meta):
                   'dict': lambda: stringify(inp, (blk.get('spec') == 'json')),
                   'meta': lambda: inp,
                   'file': lambda: get_file(inp),
-                  'eval': lambda: eval(inp),  # pylint: disable=eval-used
+                  'eval': lambda: stringify(eval(inp)),  # pylint: disable=eval-used
                   'function': lambda: get_import(inp)(**(dictify(blk.get('args', {})))),
                   'exec': None  # TODO
                  }
@@ -285,7 +285,7 @@ def do_recurse(blk_list=[], meta={}, merge_func=merge_line):  # pylint: disable=
             print('# ------------- error --------------------', file=sys.stderr)
             print('# trace: block', file=sys.stderr)
             YM.dump(blk, sys.stderr)
-            print('# trace: block', file=sys.stderr)
+            print('# trace: meta', file=sys.stderr)
             print('', file=sys.stderr)
             YM.dump(meta, sys.stderr)
             print('# ----------------------------------------', file=sys.stderr)

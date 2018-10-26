@@ -1,0 +1,12 @@
+---
+# preprocessing
+# tests/prep.yaml
+replacement:
+  - meta: text
+    input:
+      filename: hello.out
+  - text: file
+    prep: format
+    input: |
+      {filename}
+...

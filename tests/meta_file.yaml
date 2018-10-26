@@ -1,0 +1,16 @@
+---
+# metadata
+# tests/meta_file.yaml
+replacement:
+  # parse file, inserting result into metadata dictionary
+  - meta: file
+    input:
+      a.json
+  # string substitution with 'proc
+  - text: text
+    proc: format
+    input: |
+      hello {hello}
+      hi {hi}
+      list {list}
+...

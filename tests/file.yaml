@@ -1,6 +1,6 @@
 ---
 # read from file
-# examples/file.yaml
+# tests/file.yaml
 replacement:
   - text: file
     input:

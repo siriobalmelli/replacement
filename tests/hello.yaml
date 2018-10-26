@@ -1,6 +1,6 @@
 ---
 # simplistic template example
-# examples/hello.yaml
+# tests/hello.yaml
 replacement:
   - text: text
     input:
