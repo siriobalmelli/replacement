@@ -4,8 +4,8 @@
 replacement:
   # insert '1.1' into metadata (substitutions dict) under the key 'version'
   - meta: text
-    spec: version
-    input: 1.1
+    input:
+      version: 1.1
   - text: text
     proc: format
     input: |
@@ -15,8 +15,8 @@ replacement:
       # metadata additions/changes seen by later blocks and any children,
       # but seen outside this list
       - meta: text
-        spec: version
-        input: 1.0
+        input:
+          version: 1.0
       - text: text
         proc: format
         input: |

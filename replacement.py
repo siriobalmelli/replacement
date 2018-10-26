@@ -5,9 +5,10 @@ python3 templating tool.
 (c) 2018 Sirio Balmelli
 '''
 
-import json
 import importlib
 import os
+import sys
+import json
 import string
 from ruamel.yaml import YAML
 from ruamel.yaml.compat import StringIO
@@ -22,6 +23,13 @@ YM.allow_unicode = True
 YM.preserve_quotes = True
 
 
+# global line separator
+EOL = '\n'
+
+
+##
+#   substitution
+##
 def subst_dict(dic, meta, method):  # pylint: disable=dangerous-default-value
     '''subst_dict()
     String-coerce all string-able values in 'dic', optionally substitute them
@@ -41,7 +49,6 @@ def subst_dict(dic, meta, method):  # pylint: disable=dangerous-default-value
 def subst_line(lin, meta, method):
     '''subst_line()
     Clean up or substitute each text line according to 'method'.
-    NOTE: 'meta' must contain an "eol" entry.
     '''
     lin = lin or []
     methods = {'literal': lambda stg, dic: stg,
@@ -50,9 +57,12 @@ def subst_line(lin, meta, method):
                'safe_substitute' : lambda stg, dic: string.Template(stg).safe_substitute(**dic)
               }
     sub = methods.get(method) or methods.get('literal')
-    return [sub(lin, meta).rstrip(meta['eol']) for lin in lin]
+    return [sub(lin, meta).rstrip(EOL) for lin in lin]
 
 
+##
+#   merging
+##
 def merge_dict(in_to, *out_of):
     ''''merge_dict()
     Merge each dictionary in 'out_of' into 'in_to' and return it.
@@ -116,6 +126,9 @@ def merge_line(in_to, *out_of):
     return (in_to or []) + [lin for lst in out_of for lin in lst]
 
 
+##
+#   get/find/execute
+##
 def get_file(path):
     '''get_file()
     Return lines in file at 'path' as a list of lines.
@@ -123,7 +136,63 @@ def get_file(path):
     with open(path, 'r') as fil:
         return [lin for lin in fil]
 
+def get_import(name):
+    '''get_import()
+    Look for 'name' function in existing namespaces; try to import it if not found
+    '''
+    # Function in existing namespaces must match EXACTLY else it may belong to another module
+    func = locals().get(name) or globals().get(name)
+    if func:
+        return func
+    # TODO: finish
 
+
+##
+#   transformation
+##
+def listify(alors):  # "alors" is "a list or string"
+    '''listify()
+    '''
+    if isinstance(alors, list):
+        return alors
+    return [lin for lin in alors.strip(EOL).split(EOL)]
+
+def stringify(alors, as_json=False):
+    '''stringify()
+    '''
+    # lists are flattened
+    if isinstance(alors, list):
+        alors = EOL.join(alors)
+    # dictionaries are dumped to YAML or, if requested, JSON
+    elif isinstance(alors, dict):
+        if as_json:
+            return json.dumps(alors)
+        stream = StringIO()
+        YM.dump(alors, stream)
+        return stream.getvalue()
+    # scalars returned as-is (string coercion for literal inputs already done in 'prep')
+    return alors
+
+def dictify(unk):
+    '''dictify()
+    'unk' is "unknown"
+    '''
+    # dictionary is pass-through
+    if isinstance(unk, dict):
+        return unk
+    # otherwise should be valid YAML (JSON is a subset of YAML)
+    unk = stringify(unk)
+    try:
+        return YM.load(unk)
+    # last resort: return the thing itself (though most likely an error)
+    except:  # pylint: disable=bare-except
+        return unk
+
+
+
+##
+#   template execution (aka: 'replacement' itself)
+##
 def do_block(blk, meta):
     ''''do_block()
     Process a block.
@@ -137,46 +206,7 @@ def do_block(blk, meta):
     # was given or not.
     blk = subst_dict(blk, meta, blk.get('prep'))
 
-    eol = meta['eol']  # it is a hard fault not to have 'eol' in meta
-
-    # transforms
-    # NOTE: "alors" is "a list or string"
-    def listify(alors):
-        '''listify()
-        '''
-        if isinstance(alors, list):
-            return alors
-        return [lin for lin in alors.strip(eol).split(eol)]
-    def stringify(alors):
-        '''stringify()
-        '''
-        # lists are flattened
-        if isinstance(alors, list):
-            alors = eol.join(alors)
-        # dictionaries are dumped to YAML or, if requested, JSON
-        elif isinstance(alors, dict):
-            if blk.get('spec') == 'json':
-                return json.dumps(alors)
-            stream = StringIO()
-            YM.dump(alors, stream)
-            return stream.getvalue()
-        # scalars returned as-is (string coercion for literal inputs already done in 'prep')
-        return alors
-    def dictify(unk):
-        '''dictify()
-        'unk' is "unknown"
-        '''
-        if isinstance(unk, dict):  # dictionary is pass-through
-            return unk
-        unk = stringify(unk)
-        try:  # JSON is *always* a valid subset of YAML
-            ret = YM.load(unk)
-            if isinstance(ret, dict or list):  # parsing only useful if it yields an object
-                return ret
-        except:  # pylint: disable=bare-except
-            pass
-        # scalars are treated a values in a dictionary with 'spec' as key
-        return {blk['spec']: unk}
+    inp = blk['input']  # it is a hard fault not to have 'input' in block
 
     # 'im' is "intermediate", denoting a value which may be:
     # 1. a string
@@ -186,6 +216,8 @@ def do_block(blk, meta):
     #   - a JSON string
     #   - a dictionary value where 'spec' should be used as key
     # 4. a dictionary object directly encoded in the YAML
+    # NOTE: it is arguable *more* efficient to have these *inside* the function
+    # instead of as globals, as it obviates a large amount of variable passing
     yields = {'text': lambda im: (subst_line(listify(im), meta, blk.get('proc')),
                                   meta),
               'dict': lambda im: (subst_dict(dictify(im), meta, blk.get('proc')),
@@ -196,38 +228,29 @@ def do_block(blk, meta):
                                              meta))
              }
 
-    inp = blk['input']  # it is a hard fault not to have 'input' in block
     if isinstance(inp, list):
         inputs = {'text': lambda: do_recurse(inp, meta, merge_line),
                   'dict': lambda: do_recurse(inp, meta, merge_dict)
                  }
     else:  # relies on string coercion in "preprocess" above
         inputs = {'text': lambda: inp,
-                  'dict': lambda: inp,  # render YAML/JSON ?
+                  'dict': lambda: stringify(inp, (blk.get('spec') == 'json')),
                   'meta': lambda: inp,
                   'file': lambda: get_file(inp),
                   'eval': lambda: eval(inp),  # pylint: disable=eval-used
-                  'function': None,
-                  'exec': None
+                  'function': lambda: get_import(inp)(**(dictify(blk.get('args', {})))),
+                  'exec': None  # TODO
                  }
 
     # get 'yield: input' function pair
     do_yield, do_input = [(yld, inp)
                           for yld, inp in blk.items()
                           if yld in yields and inp in inputs][0]
-    assert do_yield and do_input, 'broken yield statement'  # TODO: debug printing
+    assert do_yield and do_input, 'no valid "yield" statement found'
     do_yield = yields[do_yield]
     do_input = inputs[do_input]
-
-    #print('--- do_block: ---')
-    #print(blk)
-    #print(meta)
-    #print(inp)
-    #ret = do_yield(do_input())
-    #print(ret)
-    #print('-----------------')
-    #return ret
     return do_yield(do_input())
+
 
 def do_recurse(blk_list=[], meta={}, merge_func=merge_line):  # pylint: disable=dangerous-default-value
     '''do_recurse()
@@ -240,7 +263,17 @@ def do_recurse(blk_list=[], meta={}, merge_func=merge_line):  # pylint: disable=
     '''
     out = None
     for blk in blk_list:
-        data, meta = do_block(blk, meta)
+        try:
+            data, meta = do_block(blk, meta)
+        except Exception as exc:
+            print('# ------------- error --------------------', file=sys.stderr)
+            print('# trace: block', file=sys.stderr)
+            YM.dump(blk, sys.stderr)
+            print('# trace: block', file=sys.stderr)
+            print('', file=sys.stderr)
+            YM.dump(meta, sys.stderr)
+            print('# ----------------------------------------', file=sys.stderr)
+            raise exc
         if data:  # may have been a 'meta' block returning no data
             out = merge_func(out, data)
     return out
@@ -256,7 +289,6 @@ def replacement(path, meta):
     # template file
     with open(path, 'r') as fil:
         template = YM.load(fil)
-    # TODO: proper error printing
     assert 'replacement' in template, 'no "replacement" object in ' + path
     template = template['replacement']
 
@@ -266,16 +298,17 @@ def replacement(path, meta):
         cwd = os.getcwd()
         os.chdir(chd)
 
-    # sane default for line endings
+    # allow caller to set alternate line endings
     meta = meta or {}
-    if 'eol' not in meta:
-        meta['eol'] = '\n'
+    if 'eol' in meta:
+        global EOL  # pylint: disable=global-statement
+        EOL = meta['eol']
 
     out = [line for line in do_recurse(template, meta)]
 
     if chd:
         os.chdir(cwd)
-    return meta['eol'].join(out)
+    return EOL.join(out)
 
 
 def main():
