@@ -7,7 +7,7 @@ NOTE: the examples given here are further documented in the
 
 ## Introduction
 
-A *template* is a YAML file containing a `replacement` object.
+A `template` is a YAML file containing a `replacement` object.
 
 A replacement object contains a list of `blocks`.
 
@@ -26,21 +26,27 @@ replacement:
 ...
 ```
 
-Executing a template using `replacement.py`:
+Execute a template using `replacement.py`:
 
 ```bash
 $ replacement.py -t tests/hello.yaml
 hello world
 ```
 
-Blocks always begin with a `directive`; which specifies:
+Blocks always begin with a `directive`, which specifies:
   - the data type the block will `yield`, such as `text` or a `dict`
   - the input data type, such as `file` or `yaml`
 
 In the block above, `text: text` is the directive;
-  it specifies the block takes `text` input and outputs `text`.
+  it specifies the block takes `text` input and yields `text` output.
 
 ### 2. reading from a file
+
+File `hello.out`:
+
+```
+hello world
+```
 
 ```yaml
 ---
@@ -58,16 +64,18 @@ $ replacement.py -t tests/file.yaml
 hello world
 ```
 
-A few NOTES:
-  - The directive in the above block is `text: file`;
-    this means: "output text, input from a file".
-  - The `input` key is used for the filename to be read;
-    in the first example `input` was used to store the literal text input.
-  - File paths are relative to the path of the template.
+Notice that:
+
+- The directive in the above block is `text: file`;
+  this means: "yield text, input from a file".
+- The `input` key is used for the filename to be read;
+  in the first example `input` was used to store the literal text input.
+- File paths are relative to the path of the template.
 
 ### intermission: schema
 
 A schema of all the replacement directives is contained in [schema.yaml](./schema.yaml).
+
 Here is a snippet showing just the `directive` and `input` portions of a block:
 
 ```yaml
@@ -98,7 +106,7 @@ schema:
     # we can also input from other sources
     - file  # open a file on disk
     - eval  # python3 eval() statement
-    - function  # import and then call call a function
+    - func  # import and then call call a function
     - exec  # subprocess execution (usually bash)
 
   inputVal: input_specific
@@ -147,8 +155,15 @@ replacement:
     proc: format
     input: |
       v{version} tag "{tag}"
-      message {message}
-      hi {hi}
+  - text: text
+    proc: substitute
+    input: |
+      message $message
+  - text: text
+    proc: safe_substitute
+    input: |
+      hi $hi
+      this value may not exist - $nonexistent
 ...
 ```
 
@@ -157,6 +172,7 @@ $ replacement.py -t tests/metadata.yaml
 v1.1 tag "my_awesome_tag"
 message hello world
 hi 5
+this value may not exist - $nonexistent
 ```
 
 Metadata can also be read from a file.
@@ -260,10 +276,8 @@ The keyword `prep` is used, with the same semantics as `proc` (above):
 # tests/prep.yaml
 replacement:
   - meta: text
-    input: |
-      ---
+    input:
       filename: hello.out
-      ...
   - text: file
     prep: format
     input: |
@@ -276,11 +290,11 @@ $ replacement -t tests/prep.yaml
 hello world
 ```
 
-### 6. access to python `eval` and function execution
+### 6. access to python `eval`
 
 ```yaml
 ---
-# eval and function execution
+# use of eval
 # tests/an_eval.yaml
 replacement:
   # 'eval' returning a dictionary that can me appended to 'meta'
@@ -307,9 +321,58 @@ hello 6
 
 ### 7. imports and function execution
 
-**TODO**
+The `func` input directive can be used to find and call an external function
+(see [demo.py](tests/demo.py) for reference):
 
-## TODO
+```yaml
+---
+# function execution
+# tests/func.yaml
+replacement:
+  # run a function returning a dictionary, and merge that into 'meta'
+  - meta: func
+    args:
+      existing: {'original': 'thesis'}
+    # NOTE that this is sensitive to PYTHONPATH
+    input: |
+      tests.demo.ret_a_dict
+  - text: text
+    prep: format
+    input: |
+      original {original}
+      secret {secret}
+  # run a function returning a dictionary and export return as JSON
+  - text: func
+    spec: json
+    args:
+      existing: {'original': 'thesis'}
+    input: |
+      tests.demo.ret_a_dict
+  # run a function returning a list *type* and stringify the return
+  - text: func
+    args:
+      an_arg: [1, 2, 3]
+    input: |
+      tests.demo.ret_a_list
+  # run a function returning a list of strings; treat each one as a line of text
+  - text: func
+    args: {}
+    input: |
+      tests.demo.ret_a_linelist
+...
+```
+
+```bash
+$ replacement -t tests/an_eval.yaml
+original thesis
+secret 42
+{"secret": 42, "original": "thesis"}
+[42, 1, 2, 3]
+1. hello
+2. world
+```
+
+## Project TODO
 
 Project TODO list
 

@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 ''''replacement.py
-
 python3 templating tool.
 (c) 2018 Sirio Balmelli
 '''
@@ -158,8 +157,10 @@ def get_import(name):
                 mod = getattr(mod, item)
             return mod
         except:  # pylint: disable=bare-except
-            print('could not find/import function: ' + path, file=sys.stderr)
+            pass
 
+    print('could not find/import function: ' + name, file=sys.stderr)
+    print('NOTE that this is sensitive to PYTHONPATH', file=sys.stderr)
     return None
 
 
@@ -176,8 +177,8 @@ def listify(alors):  # "alors" is "a list or string"
 def stringify(alors, as_json=False):
     '''stringify()
     '''
-    # lists are flattened
-    if isinstance(alors, list):
+    # lists are flattened only if they are lists of strings
+    if isinstance(alors, list) and isinstance(alors[0], str):
         alors = EOL.join(alors)
     # dictionaries are dumped to YAML or, if requested, JSON
     elif isinstance(alors, dict):
@@ -245,26 +246,27 @@ def do_block(blk, meta):
              }
 
     if isinstance(inp, list):
-        inputs = {'text': lambda: do_recurse(inp, meta, merge_line),
-                  'dict': lambda: do_recurse(inp, meta, merge_dict)
-                 }
+        inz = {'text': lambda: do_recurse(inp, meta, merge_line),
+               'dict': lambda: do_recurse(inp, meta, merge_dict)
+              }
     else:  # relies on string coercion in "preprocess" above
-        inputs = {'text': lambda: inp,
-                  'dict': lambda: stringify(inp, (blk.get('spec') == 'json')),
-                  'meta': lambda: inp,
-                  'file': lambda: get_file(inp),
-                  'eval': lambda: stringify(eval(inp)),  # pylint: disable=eval-used
-                  'function': lambda: get_import(inp)(**(dictify(blk.get('args', {})))),
-                  'exec': None  # TODO
-                 }
+        is_js = (blk.get('spec') == 'json')  # whether to stringify objects as JSON or YAML
+        inz = {'text': lambda: inp,
+               'dict': lambda: stringify(inp, is_js),
+               'meta': lambda: inp,
+               'file': lambda: get_file(inp),
+               'eval': lambda: stringify(eval(inp)),  # pylint: disable=eval-used
+               'func': lambda: stringify(get_import(inp)(**(dictify(blk.get('args', {})))), is_js),
+               'exec': None  # TODO
+              }
 
     # get 'yield: input' function pair
     do_yield, do_input = [(yld, inp)
                           for yld, inp in blk.items()
-                          if yld in yields and inp in inputs][0]
+                          if yld in yields and inp in inz][0]
     assert do_yield and do_input, 'no valid "yield" statement found'
     do_yield = yields[do_yield]
-    do_input = inputs[do_input]
+    do_input = inz[do_input]
     return do_yield(do_input())
 
 

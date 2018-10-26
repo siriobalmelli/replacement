@@ -39,7 +39,7 @@ schema:
     # we can also input from other sources
     - file  # open a file on disk
     - eval  # python3 eval() statement
-    - function  # import and then call call a function
+    - func  # import and then call call a function
     - exec  # subprocess execution (usually bash)
 
   inputVal: input_specific
@@ -47,7 +47,7 @@ schema:
   # optional 'args' : input-specific parameters
   argsVal:
     file: file_name
-    function: function_name
+    func: function_name
 
   # optional 'parse' : expected input format (how input is parsed/handled)
   # TODO: possibly redundant, we may be smarter than this
