@@ -36,13 +36,13 @@ def subst_dict(dic, meta, method):  # pylint: disable=dangerous-default-value
     Does NOT recurse into sub-objects or lists.
     '''
     dic = dic or {}
-    methods = {'literal': lambda stg, dic: stg,
-               'format': lambda stg, dic: stg.format(**dic),
-               'substitute': lambda stg, dic: string.Template(stg).substitute(**dic),
-               'safe_substitute' : lambda stg, dic: string.Template(stg).safe_substitute(**dic)
+    methods = {'literal': str,  # assume only passthrough *needs* string coercion
+               'format': lambda stg: stg.format(**meta),
+               'substitute': lambda stg: string.Template(stg).substitute(**meta),
+               'safe_substitute' : lambda stg: string.Template(stg).safe_substitute(**meta)
               }
     sub = methods.get(method) or methods.get('literal')
-    return {k: (sub(str(v), meta).rstrip(EOL) if isinstance(v, (str, float, int)) else v)
+    return {k: (sub(v).rstrip(EOL) if isinstance(v, (str, float, int)) else v)
             for k, v in dic.items()}
 
 def subst_line(lin, meta, method):
@@ -50,13 +50,13 @@ def subst_line(lin, meta, method):
     Clean up or substitute each text line according to 'method'.
     '''
     lin = lin or []
-    methods = {'literal': lambda stg, dic: stg,
-               'format': lambda stg, dic: stg.format(**dic),
-               'substitute': lambda stg, dic: string.Template(stg).substitute(**dic),
-               'safe_substitute' : lambda stg, dic: string.Template(stg).safe_substitute(**dic)
+    methods = {'literal': str,  # passthrough case does string coercion
+               'format': lambda stg: stg.format(**meta),
+               'substitute': lambda stg: string.Template(stg).substitute(**meta),
+               'safe_substitute' : lambda stg: string.Template(stg).safe_substitute(**meta)
               }
     sub = methods.get(method) or methods.get('literal')
-    return [sub(lin, meta).rstrip(EOL) for lin in lin]
+    return [sub(lin).rstrip(EOL) for lin in lin]
 
 
 ##
@@ -167,28 +167,37 @@ def get_import(name):
 ##
 #   transformation
 ##
-def listify(alors):  # "alors" is "a list or string"
+def listify(alors):
     '''listify()
+    'alors' is us assuming "a list (of strings) or string" as input
     '''
     if isinstance(alors, list):
         return alors
     return [lin for lin in alors.strip(EOL).split(EOL)]
 
-def stringify(alors, as_json=False):
+def stringify(unk, as_json=False):
     '''stringify()
+    'unk' may be:
+    - already a string
+    - list of string lines (possibly empty)
+    - a dictionary object (must be rendered as YAML/JSON)
+    - already a string (leave alone)
+    - another scalar (int, float, etc) which should be stringified
     '''
-    # lists are flattened only if they are lists of strings
-    if isinstance(alors, list) and isinstance(alors[0], str):
-        alors = EOL.join(alors)
+    if isinstance(unk, str):
+        return unk
+    # lists are flattened only if they are empty or are lists of strings
+    if isinstance(unk, list) and (not unk or isinstance(unk[0], str)):
+        return EOL.join(unk)
     # dictionaries are dumped to YAML or, if requested, JSON
-    elif isinstance(alors, dict):
+    if isinstance(unk, dict):
         if as_json:
-            return json.dumps(alors)
+            return json.dumps(unk)
         stream = StringIO()
-        YM.dump(alors, stream)
+        YM.dump(unk, stream)
         return stream.getvalue()
     # scalars returned stringified
-    return str(alors)
+    return str(unk)
 
 def dictify(unk):
     '''dictify()
@@ -201,10 +210,9 @@ def dictify(unk):
     unk = stringify(unk)
     try:
         return YM.load(unk)
-    # last resort: return the thing itself (though most likely an error)
     except:  # pylint: disable=bare-except
-        return unk
-
+        print('cannot parse supposed dictionary: ' + unk, file=sys.stderr)
+        return {}
 
 
 ##
