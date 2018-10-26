@@ -143,23 +143,24 @@ def get_import(name):
     # Function in existing namespaces must match EXACTLY else it may belong to another module
     func = locals().get(name) or globals().get(name)
     if func:
+        return func
 
-	# Try to import, starting from leftmost token and ignoring rightmost
-	#+	e.g.: for 'toaster.ToasterClass.sanitize', try:
-	#+		-> path: toaster			    name: ToasterClass.sanitize
-	#+		-> path: toaster.ToasterClass	name: sanitize
-	lst = name.split('.')
-	for path, name in [ ('.'.join(lst[:-i]), '.'.join(lst[-i:]))
-						for i in range(1, len(lst)).__reversed__() ]:
-		try:
-			mod = importlib.import_module(path)
-			for item in name.split('.'):
-				mod = getattr(mod, item)
-			return mod
-		except:
-			print("could not find '{0}'".format(path), file=sys.stderr)
-	return None
-    # TODO: finish
+    # Try to import, starting from leftmost token and ignoring rightmost
+    #+  e.g.: for 'toaster.ToasterClass.sanitize', try:
+    #+      -> path: toaster                name: ToasterClass.sanitize
+    #+      -> path: toaster.ToasterClass   name: sanitize
+    lst = name.split('.')
+    for path, tok in [('.'.join(lst[:-i]), '.'.join(lst[-i:]))
+                      for i in range(1, len(lst)).__reversed__()]:
+        try:
+            mod = importlib.import_module(path)
+            for item in tok.split('.'):
+                mod = getattr(mod, item)
+            return mod
+        except:  # pylint: disable=bare-except
+            print('could not find/import function: ' + path, file=sys.stderr)
+
+    return None
 
 
 ##
