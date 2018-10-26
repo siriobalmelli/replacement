@@ -16,7 +16,8 @@ replacement:
       secret {secret}
   # run a function returning a dictionary and export return as JSON
   - text: func
-    spec: json
+    options:
+      - json  # emit JSON rather than YAML (the default)
     args:
       existing: {'original': 'thesis'}
     input: |

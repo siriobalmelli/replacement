@@ -13,7 +13,7 @@ from ruamel.yaml import YAML
 from ruamel.yaml.compat import StringIO
 
 
-# A shiny global ruamel.yaml object with sane options (aka: dumps should pass yamllint)
+# A shiny global ruamel.yaml obj with sane options (dumps should pass yamllint)
 YM = YAML()
 YM.indent(mapping=2, sequence=4, offset=2)
 YM.explicit_start = True
@@ -239,7 +239,6 @@ def do_block(blk, meta):
     # 3. either of those, but containing:
     #   - a YAML string
     #   - a JSON string
-    #   - a dictionary value where 'spec' should be used as key
     # 4. a dictionary object directly encoded in the YAML
     # NOTE: it is arguable *more* efficient to have these *inside* the function
     # instead of as globals, as it obviates a large amount of variable passing
@@ -248,7 +247,7 @@ def do_block(blk, meta):
               'dict': lambda im: (subst_dict(dictify(im), meta, blk.get('proc')),
                                   meta),
               'meta': lambda im: (None,
-                                  # merge into 'meta' at 'spec' key (clobber meta)
+                                  # merge 'meta' into self (clobber meta)
                                   merge_dict(subst_dict(dictify(im), meta, blk.get('proc')),
                                              meta))
              }
@@ -258,13 +257,13 @@ def do_block(blk, meta):
                'dict': lambda: do_recurse(inp, meta, merge_dict)
               }
     else:  # relies on string coercion in "preprocess" above
-        is_js = (blk.get('spec') == 'json')  # whether to stringify objects as JSON or YAML
+        is_js = 'json' in blk.get('options', [])  # whether to stringify objects as JSON or YAML
         inz = {'text': lambda: inp,
                'dict': lambda: stringify(inp, is_js),
                'meta': lambda: inp,
                'file': lambda: get_file(inp),
                'eval': lambda: stringify(eval(inp)),  # pylint: disable=eval-used
-               'func': lambda: stringify(get_import(inp)(**(dictify(blk.get('args', {})))), is_js),
+               'func': lambda: stringify(get_import(inp)(**blk.get('args', {})), is_js),
                'exec': None  # TODO
               }
 

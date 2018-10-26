@@ -6,7 +6,7 @@ replacement:
   - meta: file
     input:
       a.json
-  # string substitution with 'proc
+      # string substitution with 'proc'
   - text: text
     proc: format
     input: |

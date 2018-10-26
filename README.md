@@ -182,8 +182,8 @@ File `a.json`:
 ```json
 {
     "hello": "world",
-	"hi": 5,
-	"list": [ 1, 2, 3, 4 ]
+    "hi": 5,
+    "list": [ 1, 2, 3, 4 ]
 }
 ```
 
@@ -196,7 +196,7 @@ replacement:
   - meta: file
     input:
       a.json
-  # string substitution with 'proc
+  # string substitution with 'proc'
   - text: text
     proc: format
     input: |
@@ -278,6 +278,7 @@ replacement:
   - meta: text
     input:
       filename: hello.out
+  # preprocessing will substitute {filename} before evaluating 'file' input
   - text: file
     prep: format
     input: |
@@ -343,7 +344,8 @@ replacement:
       secret {secret}
   # run a function returning a dictionary and export return as JSON
   - text: func
-    spec: json
+    options:
+      - json  # emit JSON rather than YAML (the default)
     args:
       existing: {'original': 'thesis'}
     input: |
