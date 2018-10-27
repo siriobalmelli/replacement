@@ -23,6 +23,13 @@ replacement:
     proc: format
     input: |
       v{version} tag "{tag}"
-      message {message}
-      hi {hi}
+  - text: text
+    proc: substitute
+    input: |
+      message $message
+  - text: text
+    proc: safe_substitute
+    input: |
+      hi $hi
+      this value may not exist - $nonexistent
 ...

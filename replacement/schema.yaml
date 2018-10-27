@@ -1,22 +1,21 @@
 ---
 ## pipeline stages:
-# prep -> input + parse -> yield + spec -> proc
+# prep -> input + parse -> yield + proc
 #
-# prep          :: optionally preprocess (variable substitution)
+# prep          :: preprocess (stringify, and optional variable substitution)
 #                   the block before parsing it.
-# input + parse :: execute input directive with 'args',
-#                   parse received input as per 'parse'.
-# yield + spec  :: return output formatted as per spec
-# proc          :: perform variable substitution on output
+# input + parse :: execute input directive.
+# yield + proc  :: format output,
+#                   perform variable substitution on formatted output,
+#                   yield.
 
 ##
 # format of a block
 ##
 block:
   - yield: inputType  # this is a directive
-    spec: specVal
-    args: argsVal
-    parse: parseVal
+    options: optVal
+    args: {args dictionary}
     format: formatVal
     input: inputVal
 
@@ -39,19 +38,10 @@ schema:
     # we can also input from other sources
     - file  # open a file on disk
     - eval  # python3 eval() statement
-    - function  # import and then call call a function
+    - func  # import and then call call a function
     - exec  # subprocess execution (usually bash)
 
   inputVal: input_specific
-
-  # optional 'args' : input-specific parameters
-  argsVal:
-    file: file_name
-    function: function_name
-
-  # optional 'parse' : expected input format (how input is parsed/handled)
-  # TODO: possibly redundant, we may be smarter than this
-  parseVal: [lines, json, yaml]  # default value is 'lines'
 
   # substitution directives:
   # these are not mutually exclusive - a block may have both 'prep' and 'proc'
@@ -63,9 +53,7 @@ schema:
     - substitute  # use string.Template().substitute
     - safe_substitute  # use string.Template().safe_substitute
 
-  # optional 'spec' : specific per-yield output specifications
-  specVal:
-    - text: [lines, json, yaml]  # encode as list of strings, or dump json/yaml
-      default: lines
-    - meta: key_name  # insert into substitutions dictionary under 'key_name'
+  # options : optional list of flags
+  optVal:
+    - json  # emit dictionary as JSON rather than YAML (the default)
 ...

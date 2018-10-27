@@ -1,0 +1,36 @@
+---
+# function execution
+# tests/func.yaml
+replacement:
+  # run a function returning a dictionary, and merge that into 'meta'
+  - meta: func
+    args:
+      existing: {'original': 'thesis'}
+    # NOTE that this is sensitive to PYTHONPATH
+    input: |
+      tests.demo.ret_a_dict
+  - text: text
+    prep: format
+    input: |
+      original {original}
+      secret {secret}
+  # run a function returning a dictionary and export return as JSON
+  - text: func
+    options:
+      - json  # emit JSON rather than YAML (the default)
+    args:
+      existing: {'original': 'thesis'}
+    input: |
+      tests.demo.ret_a_dict
+  # run a function returning a list *type* and stringify the return
+  - text: func
+    args:
+      an_arg: [1, 2, 3]
+    input: |
+      tests.demo.ret_a_list
+  # run a function returning a list of strings; treat each one as a line of text
+  - text: func
+    args: {}
+    input: |
+      tests.demo.ret_a_linelist
+...

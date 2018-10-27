@@ -5,6 +5,7 @@ replacement:
   - meta: text
     input:
       filename: hello.out
+  # preprocessing will substitute {filename} before evaluating 'file' input
   - text: file
     prep: format
     input: |

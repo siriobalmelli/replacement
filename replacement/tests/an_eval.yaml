@@ -1,5 +1,5 @@
 ---
-# eval and function execution
+# use of eval
 # tests/an_eval.yaml
 replacement:
   # 'eval' returning a dictionary that can me appended to 'meta'
