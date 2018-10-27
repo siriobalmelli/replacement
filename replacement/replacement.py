@@ -346,11 +346,11 @@ def main():
     desc = '''replacement: the YAML templating utility.'''
     parser = argparse.ArgumentParser(description=desc,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('-t', '--template', metavar="YAML", dest='yaml', type=str,
+    parser.add_argument('-t', '--template', metavar='YAML_PATH', dest='yaml', type=str,
                         help='''Execute 'replacement' directive in this YAML template.''')
     parser.add_argument('-v', '--verbose', dest='verbose', action='store_true',
                         help='''Print metadata (substitutions dictionary) to stderr.''')
-    parser.add_argument(metavar="META", dest='meta', nargs='*',
+    parser.add_argument(metavar='META', dest='meta', nargs='*',
                         help='''
 A "key:value" pair.
 Key-value pairs are added to the substitutions dictionary
@@ -366,6 +366,11 @@ NOTE: separation into key:value is done at the first ':' ONLY;
             if k and v}
 
     assert not args.verbose, 'verbose not implemented'
+
+    if not args.yaml:
+        print('''we require a template path; use '-t YAML_PATH' flag.\n\n''', file=sys.stderr)
+        parser.print_help()
+        exit(1)
 
     print(replacement(args.yaml, meta))
 

@@ -382,6 +382,7 @@ Project TODO list
 	- Nix (including test runner)
 	- Travis
 	- PyPy
+    - proper test runner (perhaps [tox](https://tox.readthedocs.io/en/latest/)?)
 
 1. Dependency output command: runs all preprocessing and outputs a list of
   file dependencies.
