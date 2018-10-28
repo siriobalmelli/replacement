@@ -11,3 +11,6 @@ All examples from the [project documentation](../README.md) should show
 - These test cases double as examples.
 - Examples which are not referenced and explained elsewhere in the
 	documentation should have a section in this README.
+
+1. Working with dictionaries
+    - see [dict.yaml](./dict.yaml)

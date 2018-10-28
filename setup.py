@@ -3,13 +3,14 @@ PyPI build for replacement package
 (c) 2018 Anthony Soenen and Sirio Balmelli
 '''
 from setuptools import setup, find_packages
+from replacement import name, version
 
 with open("README.md", "r") as fh:
     LONG = fh.read()
 
 setup(
-    name="replacement",
-    version="0.2.6",
+    name=name,
+    version=version,
     packages=find_packages(),
 
     install_requires=['ruamel.yaml'],

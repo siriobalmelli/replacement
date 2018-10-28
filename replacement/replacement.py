@@ -3,8 +3,6 @@
 python3 templating tool.
 (c) 2018 Sirio Balmelli
 '''
-name = "replacement"
-
 import importlib
 import os
 import sys
@@ -12,6 +10,10 @@ import json
 import string
 from ruamel.yaml import YAML
 from ruamel.yaml.compat import StringIO
+
+
+name = "replacement"  # pylint: disable=invalid-name
+version = "0.2.7"  # pylint: disable=invalid-name
 
 
 # A shiny global ruamel.yaml obj with sane options (dumps should pass yamllint)
@@ -136,20 +138,21 @@ def get_file(path):
     with open(path, 'r') as fil:
         return [lin for lin in fil]
 
-def get_import(name):
+def get_import(func_name):
     '''get_import()
-    Look for 'name' function in existing namespaces; try to import it if not found
+    Look for 'func_name' function in existing func_namespaces;
+    try to import it if not found
     '''
-    # Function in existing namespaces must match EXACTLY else it may belong to another module
-    func = locals().get(name) or globals().get(name)
+    # Function in existing func_namespaces must match EXACTLY else it may belong to another module
+    func = locals().get(func_name) or globals().get(func_name)
     if func:
         return func
 
     # Try to import, starting from leftmost token and ignoring rightmost
     #+  e.g.: for 'toaster.ToasterClass.sanitize', try:
-    #+      -> path: toaster                name: ToasterClass.sanitize
-    #+      -> path: toaster.ToasterClass   name: sanitize
-    lst = name.split('.')
+    #+      -> path: toaster                func_name: ToasterClass.sanitize
+    #+      -> path: toaster.ToasterClass   func_name: sanitize
+    lst = func_name.split('.')
     for path, tok in [('.'.join(lst[:-i]), '.'.join(lst[-i:]))
                       for i in range(1, len(lst)).__reversed__()]:
         try:
@@ -160,7 +163,7 @@ def get_import(name):
         except:  # pylint: disable=bare-except
             pass
 
-    print('could not find/import function: ' + name, file=sys.stderr)
+    print('could not find/import function: ' + func_name, file=sys.stderr)
     print('NOTE that this is sensitive to PYTHONPATH', file=sys.stderr)
     return None
 
@@ -168,14 +171,6 @@ def get_import(name):
 ##
 #   transformation
 ##
-def listify(alors):
-    '''listify()
-    'alors' is us assuming "a list (of strings) or string" as input
-    '''
-    if isinstance(alors, list):
-        return alors
-    return [lin for lin in alors.strip(EOL).split(EOL)]
-
 def stringify(unk, as_json=False):
     '''stringify()
     'unk' may be:
@@ -199,6 +194,16 @@ def stringify(unk, as_json=False):
         return stream.getvalue()
     # scalars returned stringified
     return str(unk)
+
+def listify(unk):
+    '''listify()
+    This will likely be a list of strings already, but if not, make it so
+    '''
+    if isinstance(unk, list):
+        return unk
+    if not isinstance(unk, str):
+        unk = stringify(unk)
+    return [lin for lin in unk.strip(EOL).split(EOL)]
 
 def dictify(unk):
     '''dictify()
@@ -260,7 +265,7 @@ def do_block(blk, meta):
     else:  # relies on string coercion in "preprocess" above
         is_js = 'json' in blk.get('options', [])  # whether to stringify objects as JSON or YAML
         inz = {'text': lambda: inp,
-               'dict': lambda: stringify(inp, is_js),
+               'dict': lambda: stringify(subst_dict(inp, meta, blk.get('prep')), is_js),
                'meta': lambda: inp,
                'file': lambda: get_file(inp),
                'eval': lambda: stringify(eval(inp)),  # pylint: disable=eval-used
