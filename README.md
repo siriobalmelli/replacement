@@ -13,7 +13,7 @@ or, if you use [nix](https://nixos.org/):
 ## Introduction
 
 NOTE: the examples given here are further documented in the
-  [tests](tests/README.md).
+  [tests](replacement/tests/README.md).
 
 A `template` is a YAML file containing a `replacement` object.
 
@@ -394,4 +394,4 @@ Project TODO list
   file dependencies.
 For use e.g. in Makefiles.
 
-1. Express [the schema](./schema.yaml) formally and write validation code for it.
+1. Express [the schema](replacement/schema.yaml) formally and write validation code for it.
