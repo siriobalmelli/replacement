@@ -1,4 +1,4 @@
-# Replacement
+# Replacement [![Build Status](https://travis-ci.org/siriobalmelli/replacement.svg?branch=master)](https://travis-ci.org/siriobalmelli/replacement)
 
 Replacement is a python utility that parses a yaml template and outputs text.
 
@@ -379,10 +379,8 @@ secret 42
 Project TODO list
 
 1. Packaging:
-	- Nix (including test runner)
-	- Travis
-	- PyPy
     - proper test runner (perhaps [tox](https://tox.readthedocs.io/en/latest/)?)
+    - add test runner to all the builds
 
 1. Dependency output command: runs all preprocessing and outputs a list of
   file dependencies.
