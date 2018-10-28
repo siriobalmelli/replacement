@@ -9,13 +9,13 @@ with open("README.md", "r") as fh:
 
 setup(
     name="replacement",
-    version="0.2.5",
+    version="0.2.6",
     packages=find_packages(),
 
     install_requires=['ruamel.yaml'],
     python_requires='>=3.5',
 
-    entry_points={'console_scripts': ['replacement = replacement.replacement:main']},
+    entry_points={'console_scripts': ['replacement = replacement:main']},
 
     author="Sirio Balmelli",
     author_email="sirio.bm@gmail.com",
