@@ -2,10 +2,18 @@
 
 Replacement is a python utility that parses a yaml template and outputs text.
 
-NOTE: the examples given here are further documented in the
-  [tests](tests/README.md).
+## Installing
+
+`pip3 install replacement`
+
+or, if you use [nix](https://nixos.org/):
+
+`nix-env --install -A 'nixpkgs.python36Packages.replacement'`
 
 ## Introduction
+
+NOTE: the examples given here are further documented in the
+  [tests](tests/README.md).
 
 A `template` is a YAML file containing a `replacement` object.
 
