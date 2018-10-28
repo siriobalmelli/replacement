@@ -34,10 +34,10 @@ replacement:
 ...
 ```
 
-Execute a template using `replacement.py`:
+Execute a template using `replacement`:
 
 ```bash
-$ replacement.py -t tests/hello.yaml
+$ replacement -t tests/hello.yaml
 hello world
 ```
 
@@ -68,7 +68,7 @@ replacement:
 ```
 
 ```bash
-$ replacement.py -t tests/file.yaml
+$ replacement -t tests/file.yaml
 hello world
 ```
 
@@ -176,7 +176,7 @@ replacement:
 ```
 
 ```bash
-$ replacement.py -t tests/metadata.yaml
+$ replacement -t tests/metadata.yaml
 v1.1 tag "my_awesome_tag"
 message hello world
 hi 5
@@ -215,7 +215,7 @@ replacement:
 ```
 
 ```bash
-$ replacement.py -t tests/meta_file.yaml
+$ replacement -t tests/meta_file.yaml
 hello world
 hi 5
 list [1, 2, 3, 4]
