@@ -189,9 +189,9 @@ File `a.json`:
 
 ```json
 {
-    "hello": "world",
-    "hi": 5,
-    "list": [ 1, 2, 3, 4 ]
+"hello": "world",
+"hi": 5,
+"list": [ 1, 2, 3, 4 ]
 }
 ```
 
@@ -234,10 +234,15 @@ list [1, 2, 3, 4]
 # tests/nesting.yaml
 replacement:
   # parse 'input' and insert the resulting dictionary into 'meta'
-  - meta: text
+  - meta: dict
     input:
       version: 1.1
+  # same thing, but parse *text* input, instead of a dictionary
+  - meta: text
+    input: |  # note the '|'
+      ---
       tag: my_awesome_tag
+      ...
   # use 'proc' to specify that 'str.format(**meta)' should be run on output
   - text: text
     proc: format
@@ -247,7 +252,7 @@ replacement:
     input:
       # metadata additions/changes seen by later blocks and any children,
       # but seen outside this list
-      - meta: text
+      - meta: dict
         input:
           version: 1.0
       - text: text
@@ -283,7 +288,7 @@ The keyword `prep` is used, with the same semantics as `proc` (above):
 # preprocessing
 # tests/prep.yaml
 replacement:
-  - meta: text
+  - meta: dict
     input:
       filename: hello.out
   # preprocessing will substitute {filename} before evaluating 'file' input
@@ -358,17 +363,11 @@ replacement:
       existing: {'original': 'thesis'}
     input: |
       tests.demo.ret_a_dict
-  # run a function returning a list *type* and stringify the return
-  - text: func
-    args:
-      an_arg: [1, 2, 3]
-    input: |
-      tests.demo.ret_a_list
   # run a function returning a list of strings; treat each one as a line of text
   - text: func
     args: {}
     input: |
-      tests.demo.ret_a_linelist
+      tests.demo.ret_a_stream
 ...
 ```
 
@@ -377,7 +376,6 @@ $ replacement -t tests/an_eval.yaml
 original thesis
 secret 42
 {"secret": 42, "original": "thesis"}
-[42, 1, 2, 3]
 1. hello
 2. world
 ```
@@ -385,6 +383,8 @@ secret 42
 ## Project TODO
 
 Project TODO list
+
+1. subprocess execution and output capture
 
 1. Packaging:
     - proper test runner (perhaps [tox](https://tox.readthedocs.io/en/latest/)?)
@@ -395,3 +395,7 @@ Project TODO list
 For use e.g. in Makefiles.
 
 1. Express [the schema](replacement/schema.yaml) formally and write validation code for it.
+
+1. This README itself becomes a template, automatically including:
+    - test YAML files
+    - BASH output of tests

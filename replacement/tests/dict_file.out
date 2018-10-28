@@ -1,0 +1,20 @@
+---
+replacement:
+  - meta: dict
+    input:
+      num: 1.0
+      str: hi
+  - text: dict
+    input:
+      # this list will be recursed (a list is not a dictionary)
+      - dict: dict
+        prep: substitute
+        input:
+          version: $num $str
+      - dict: text
+        prep: substitute
+        input: |
+          ---
+          num: $num
+          ...
+...

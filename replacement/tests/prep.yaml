@@ -2,7 +2,7 @@
 # preprocessing
 # tests/prep.yaml
 replacement:
-  - meta: text
+  - meta: dict
     input:
       filename: hello.out
   # preprocessing will substitute {filename} before evaluating 'file' input

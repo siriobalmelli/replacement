@@ -14,3 +14,4 @@ All examples from the [project documentation](../README.md) should show
 
 1. Working with dictionaries
     - see [dict.yaml](./dict.yaml)
+    - see [dict_file.yaml](./dict_file.yaml)

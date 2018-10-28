@@ -3,10 +3,15 @@
 # tests/nesting.yaml
 replacement:
   # parse 'input' and insert the resulting dictionary into 'meta'
-  - meta: text
+  - meta: dict
     input:
       version: 1.1
+  # same thing, but parse *text* input, instead of a dictionary
+  - meta: text
+    input: |  # note the '|'
+      ---
       tag: my_awesome_tag
+      ...
   # use 'proc' to specify that 'str.format(**meta)' should be run on output
   - text: text
     proc: format
@@ -16,7 +21,7 @@ replacement:
     input:
       # metadata additions/changes seen by later blocks and any children,
       # but seen outside this list
-      - meta: text
+      - meta: dict
         input:
           version: 1.0
       - text: text

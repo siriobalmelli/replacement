@@ -1,0 +1,10 @@
+---
+# dictionaries from files, nested (worst corner case)
+# tests/dict_file.yaml
+replacement:
+  - text: dict
+    input:
+      - dict: file
+        input: |
+          dict.yaml
+...

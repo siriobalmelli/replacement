@@ -23,8 +23,11 @@ def ret_a_list(an_arg):
     return [42] + existing
 
 
-def ret_a_linelist():
+def ret_a_stream():
     '''ret_a_linelist()
     return a list of text lines
     '''
-    return ['1. hello', '2. world']
+    from io import StringIO
+    ret = StringIO()
+    ret.writelines(['1. hello\n', '2. world\n'])
+    return ret

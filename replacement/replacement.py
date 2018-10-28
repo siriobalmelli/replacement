@@ -8,12 +8,12 @@ import os
 import sys
 import json
 import string
+from io import StringIO, IOBase
 from ruamel.yaml import YAML
-from ruamel.yaml.compat import StringIO
 
 
 name = "replacement"  # pylint: disable=invalid-name
-version = "0.2.7"  # pylint: disable=invalid-name
+version = "0.2.8"  # pylint: disable=invalid-name
 
 
 # A shiny global ruamel.yaml obj with sane options (dumps should pass yamllint)
@@ -25,14 +25,32 @@ YM.allow_unicode = True
 YM.preserve_quotes = True
 
 
-# global line separator
-EOL = '\n'
+# global formatting (any changes *should* propagate to later directives)
+EOL = '\n'  # line separator
+RENDER_JS = False
 
 
 ##
 #   substitution
 ##
-def subst_dict(dic, meta, method):  # pylint: disable=dangerous-default-value
+def subst_stream(strm, meta, method):
+    '''subst_stream()
+    substitute strings in strm
+    return (the same? or a new) stream with substituted values
+    '''
+    strm = strm or StringIO()
+    methods = {'passthrough': lambda stg: stg,
+               'format': lambda stg: stg.format(**meta),
+               'substitute': lambda stg: string.Template(stg).substitute(**meta),
+               'safe_substitute' : lambda stg: string.Template(stg).safe_substitute(**meta)
+              }
+    sub = methods.get(method) or methods.get('passthrough')
+    out = StringIO()
+    strm.seek(0)
+    out.writelines([sub(lin) for lin in strm])
+    return out
+
+def subst_dict(dic, meta, method):
     '''subst_dict()
     String-coerce all string-able values in 'dic', optionally substitute them
     against 'meta' using 'method'.
@@ -48,23 +66,22 @@ def subst_dict(dic, meta, method):  # pylint: disable=dangerous-default-value
     return {k: (sub(v).rstrip(EOL) if isinstance(v, (str, float, int)) else v)
             for k, v in dic.items()}
 
-def subst_line(lin, meta, method):
-    '''subst_line()
-    Clean up or substitute each text line according to 'method'.
-    '''
-    lin = lin or []
-    methods = {'literal': str,  # passthrough case does string coercion
-               'format': lambda stg: stg.format(**meta),
-               'substitute': lambda stg: string.Template(stg).substitute(**meta),
-               'safe_substitute' : lambda stg: string.Template(stg).safe_substitute(**meta)
-              }
-    sub = methods.get(method) or methods.get('literal')
-    return [sub(lin).rstrip(EOL) for lin in lin]
-
 
 ##
 #   merging
 ##
+def merge_stream(in_to, *out_of):
+    '''merge_stream()
+    Merge (more like "append") all 'out_out' streams into 'in_to'.
+    Assume that in_to seek position is already at end.
+    return in_to.
+    '''
+    in_to = in_to or StringIO()
+    for out in out_of:
+        out.seek(0)
+        in_to.write(out.read())
+    return in_to
+
 def merge_dict(in_to, *out_of):
     ''''merge_dict()
     Merge each dictionary in 'out_of' into 'in_to' and return it.
@@ -121,23 +138,10 @@ def merge_dict(in_to, *out_of):
             raise Exception("cannot merge type '{0}'".format(type(obj)))
     return in_to
 
-def merge_line(in_to, *out_of):
-    '''merge_line()
-    Concatenate multiple lists
-    '''
-    return (in_to or []) + [lin for lst in out_of for lin in lst]
-
 
 ##
 #   get/find/execute
 ##
-def get_file(path):
-    '''get_file()
-    Return lines in file at 'path' as a list of lines.
-    '''
-    with open(path, 'r') as fil:
-        return [lin for lin in fil]
-
 def get_import(func_name):
     '''get_import()
     Look for 'func_name' function in existing func_namespaces;
@@ -171,39 +175,30 @@ def get_import(func_name):
 ##
 #   transformation
 ##
-def stringify(unk, as_json=False):
+def stringify(scalar):
     '''stringify()
-    'unk' may be:
-    - already a string
-    - list of string lines (possibly empty)
-    - a dictionary object (must be rendered as YAML/JSON)
-    - already a string (leave alone)
-    - another scalar (int, float, etc) which should be stringified
+    return a stringified value with *only* EOL at end of line
     '''
-    if isinstance(unk, str):
-        return unk
-    # lists are flattened only if they are empty or are lists of strings
-    if isinstance(unk, list) and (not unk or isinstance(unk[0], str)):
-        return EOL.join(unk)
-    # dictionaries are dumped to YAML or, if requested, JSON
-    if isinstance(unk, dict):
-        if as_json:
-            return json.dumps(unk)
-        stream = StringIO()
-        YM.dump(unk, stream)
-        return stream.getvalue()
-    # scalars returned stringified
-    return str(unk)
+    return str(scalar).rstrip() + EOL
 
-def listify(unk):
-    '''listify()
-    This will likely be a list of strings already, but if not, make it so
+def streamify(unk):
+    '''streamify()
+    Return a stream (with seek position most likely at end)
     '''
-    if isinstance(unk, list):
+    if isinstance(unk, IOBase):
         return unk
-    if not isinstance(unk, str):
-        unk = stringify(unk)
-    return [lin for lin in unk.strip(EOL).split(EOL)]
+    out = StringIO()
+    if isinstance(unk, dict):
+        if RENDER_JS:
+            json.dump(unk, out)
+            out.write(EOL)  # JSON doesn't dump a terminating newline
+        else:
+            YM.dump(unk, out)
+    elif isinstance(unk, list):
+        out.writelines([stringify(lin) for lin in unk])
+    else:
+        out.write(stringify(unk))
+    return out
 
 def dictify(unk):
     '''dictify()
@@ -213,10 +208,12 @@ def dictify(unk):
     if isinstance(unk, dict):
         return unk
     # otherwise should be valid YAML (JSON is a subset of YAML)
-    unk = stringify(unk)
+    unk = streamify(unk)
+    unk.seek(0)
     try:
         return YM.load(unk)
     except:  # pylint: disable=bare-except
+        unk.seek(0)
         print('cannot parse supposed dictionary: ' + unk, file=sys.stderr)
         return {}
 
@@ -239,16 +236,8 @@ def do_block(blk, meta):
 
     inp = blk['input']  # it is a hard fault not to have 'input' in block
 
-    # 'im' is "intermediate", denoting a value which may be:
-    # 1. a string
-    # 2. a list of strings
-    # 3. either of those, but containing:
-    #   - a YAML string
-    #   - a JSON string
-    # 4. a dictionary object directly encoded in the YAML
-    # NOTE: it is arguable *more* efficient to have these *inside* the function
-    # instead of as globals, as it obviates a large amount of variable passing
-    yields = {'text': lambda im: (subst_line(listify(im), meta, blk.get('proc')),
+    # 'im' is "intermediate", denoting a value of uncertain type
+    yields = {'text': lambda im: (subst_stream(streamify(im), meta, blk.get('proc')),
                                   meta),
               'dict': lambda im: (subst_dict(dictify(im), meta, blk.get('proc')),
                                   meta),
@@ -259,17 +248,17 @@ def do_block(blk, meta):
              }
 
     if isinstance(inp, list):
-        inz = {'text': lambda: do_recurse(inp, meta, merge_line),
+        inz = {'text': lambda: do_recurse(inp, meta, merge_stream),
                'dict': lambda: do_recurse(inp, meta, merge_dict)
               }
     else:  # relies on string coercion in "preprocess" above
-        is_js = 'json' in blk.get('options', [])  # whether to stringify objects as JSON or YAML
-        inz = {'text': lambda: inp,
-               'dict': lambda: stringify(subst_dict(inp, meta, blk.get('prep')), is_js),
-               'meta': lambda: inp,
-               'file': lambda: get_file(inp),
-               'eval': lambda: stringify(eval(inp)),  # pylint: disable=eval-used
-               'func': lambda: stringify(get_import(inp)(**blk.get('args', {})), is_js),
+        global RENDER_JS  # pylint: disable=global-statement
+        RENDER_JS = 'json' in blk.get('options', [])  # how to stringify
+        inz = {'text': lambda: stringify(inp),
+               'dict': lambda: subst_dict(inp, meta, blk.get('prep')),
+               'file': lambda: open(inp, 'r'),
+               'eval': lambda: eval(inp),  # pylint: disable=eval-used
+               'func': lambda: streamify(get_import(inp)(**blk.get('args', {}))),
                'exec': None  # TODO
               }
 
@@ -283,7 +272,7 @@ def do_block(blk, meta):
     return do_yield(do_input())
 
 
-def do_recurse(blk_list=[], meta={}, merge_func=merge_line):  # pylint: disable=dangerous-default-value
+def do_recurse(blk_list=[], meta={}, merge_func=merge_stream):  # pylint: disable=dangerous-default-value
     '''do_recurse()
     Recursively execute a series of blocks:
     - merging the output of each into the output of the previous
@@ -335,11 +324,12 @@ def replacement(path, meta):
         global EOL  # pylint: disable=global-statement
         EOL = meta['eol']
 
-    out = [line for line in do_recurse(template, meta)]
+    # expect toplevel objects to always return StringIO
+    out = do_recurse(template, meta)
 
     if chd:
         os.chdir(cwd)
-    return EOL.join(out)
+    return out.getvalue()
 
 
 def main():
@@ -377,7 +367,8 @@ NOTE: separation into key:value is done at the first ':' ONLY;
         parser.print_help()
         exit(1)
 
-    print(replacement(args.yaml, meta))
+    sys.stdout.write(replacement(args.yaml, meta))
+    sys.stdout.flush()
 
 #   main
 if __name__ == "__main__":
