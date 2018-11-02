@@ -350,7 +350,7 @@ def replacement(parse, meta={}, merge_func=merge_stream):  # pylint: disable=dan
     # undo any dir changes as a result of parsing files
     if chd:
         os.chdir(cwd)
-    return out
+    return out or StringIO()
 
 
 def main():

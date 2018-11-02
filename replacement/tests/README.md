@@ -12,6 +12,9 @@ All examples from the [project documentation](../README.md) should show
 - Examples which are not referenced and explained elsewhere in the
 	documentation should have a section in this README.
 
+1. Base case: no output directives results in no output
+    - see [nothing.yaml](./nothing.yaml)
+
 1. Working with dictionaries
     - see [dict.yaml](./dict.yaml)
     - see [dict_file.yaml](./dict_file.yaml)
