@@ -380,11 +380,51 @@ secret 42
 2. world
 ```
 
+## 8. Recursion
+
+Or, how I learned to stop worrying and have templates import other templates.
+
+```yaml
+---
+# recursion (nested 'replacement' templates)
+# tests/recurse.yaml
+replacement:
+  # parse a 'replacement' template inline
+  - replacement: text
+    input: |
+      ---
+      replacement:
+        - text: text
+          input: |
+            recursed inline
+      ...
+  - meta: dict
+    input:
+      nonexistent: "I exist I promise!"
+  # parse a replacement template from a file
+  # NOTE *relative* path)
+  # NOTE our 'meta' dictionary is propagated to child replacement being parsed
+  - replacement: file
+    input: metadata.yaml
+...
+```
+
+```bash
+$ replacement -t tests/recurse.yaml
+recursed inline
+v1.1 tag "my_awesome_tag"
+message hello world
+hi 5
+this value may not exist - I exist I promise!
+```
+
 ## Project TODO
 
 Project TODO list
 
 1. subprocess execution and output capture
+
+1. accept template from STDIN, not just a template file
 
 1. Packaging:
     - proper test runner (perhaps [tox](https://tox.readthedocs.io/en/latest/)?)

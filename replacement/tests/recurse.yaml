@@ -1,0 +1,22 @@
+---
+# recursion (nested 'replacement' templates)
+# tests/recurse.yaml
+replacement:
+  # parse a 'replacement' template inline
+  - replacement: text
+    input: |
+      ---
+      replacement:
+        - text: text
+          input: |
+            recursed inline
+      ...
+  - meta: dict
+    input:
+      nonexistent: "I exist I promise!"
+  # parse a replacement template from a file
+  # NOTE *relative* path)
+  # NOTE our 'meta' dictionary is propagated to child replacement being parsed
+  - replacement: file
+    input: metadata.yaml
+...

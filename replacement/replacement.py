@@ -13,7 +13,7 @@ from ruamel.yaml import YAML
 
 
 name = "replacement"  # pylint: disable=invalid-name
-version = "0.2.8"  # pylint: disable=invalid-name
+version = "0.3.0"  # pylint: disable=invalid-name
 
 
 # A shiny global ruamel.yaml obj with sane options (dumps should pass yamllint)
@@ -202,7 +202,10 @@ def streamify(unk):
 
 def dictify(unk):
     '''dictify()
-    'unk' is "unknown"
+    'unk' may be:
+    - already a dictionary
+    - a string or stream containing YAML/JSON to be parsed
+    - garbage to be ignored, and an empty dictionary issued instead
     '''
     # dictionary is pass-through
     if isinstance(unk, dict):
@@ -211,11 +214,13 @@ def dictify(unk):
     unk = streamify(unk)
     unk.seek(0)
     try:
-        return YM.load(unk)
+        unk = YM.load(unk)
+        if isinstance(unk, dict):
+            return unk
     except:  # pylint: disable=bare-except
-        unk.seek(0)
-        print('cannot parse supposed dictionary: ' + unk, file=sys.stderr)
-        return {}
+        pass
+    # in any event, return an empty dictionary
+    return {}
 
 
 ##
@@ -244,12 +249,14 @@ def do_block(blk, meta):
               'meta': lambda im: (None,
                                   # merge 'meta' into self (clobber meta)
                                   merge_dict(subst_dict(dictify(im), meta, blk.get('proc')),
-                                             meta))
+                                             meta)),
+              'replacement': lambda im: (replacement(im, meta),
+                                         meta)
              }
 
     if isinstance(inp, list):
-        inz = {'text': lambda: do_recurse(inp, meta, merge_stream),
-               'dict': lambda: do_recurse(inp, meta, merge_dict)
+        inz = {'text': lambda: replacement(inp, meta, merge_stream),
+               'dict': lambda: replacement(inp, meta, merge_dict)
               }
     else:  # relies on string coercion in "preprocess" above
         global RENDER_JS  # pylint: disable=global-statement
@@ -259,7 +266,8 @@ def do_block(blk, meta):
                'file': lambda: open(inp, 'r'),
                'eval': lambda: eval(inp),  # pylint: disable=eval-used
                'func': lambda: streamify(get_import(inp)(**blk.get('args', {}))),
-               'exec': None  # TODO
+               'exec': None,  # TODO
+               'replacement': lambda: inp
               }
 
     # get 'yield: input' function pair
@@ -272,17 +280,59 @@ def do_block(blk, meta):
     return do_yield(do_input())
 
 
-def do_recurse(blk_list=[], meta={}, merge_func=merge_stream):  # pylint: disable=dangerous-default-value
-    '''do_recurse()
-    Recursively execute a series of blocks:
+def replacement(parse, meta={}, merge_func=merge_stream):  # pylint: disable=dangerous-default-value
+    '''replacement()
+    Entrance AND recursion point for replacement.
+
+    'parse' may be:
+    - a list of directives to be processed
+    - a dictionary containing a 'replacement' list of directives to be parsed
+    - an IOBase (StringIO or TextIOWrapper) containing a dictionary with
+      a 'replacement' list ...
+    - a string giving the filename of a YAML/JSON file containing a dictionary
+      containing a 'replacement' list ...
+
+    Once we obtain a list, we execute each block sequentially:
     - merging the output of each into the output of the previous
     - propagating any changes to 'meta' through to successive blocks
 
     NOTE that we do not, ourselves, return a (potentially modified) 'meta'.
     NOTE that merge_func() MUST be able to accept a None input.
     '''
+    chd = None
+    path = None
+
+    if not isinstance(parse, list):
+        try:
+            if not isinstance(parse, dict):
+                dic = dictify(parse)
+                if not dic:
+                    with open(parse, 'r') as fil:
+                        dic = YM.load(fil)
+                    path = parse
+                elif hasattr(parse, 'name'):
+                    path = parse.name
+
+                # paths are relative to template: we may need to chdir to template dir
+                if path:
+                    chd = os.path.dirname(path)
+                    if chd:
+                        cwd = os.getcwd()
+                        os.chdir(chd)
+            parse = dic.get('replacement', [])
+            if 'eol' in meta:
+                global EOL  # pylint: disable=global-statement
+                EOL = meta['eol']
+        except Exception as exc:  # pylint: disable=bare-except
+            print('# ------------- error --------------------', file=sys.stderr)
+            print('cannot parse the following as a replacement template:', file=sys.stderr)
+            print(parse)
+            print('# ----------------------------------------', file=sys.stderr)
+            raise exc
+
+    # process block list
     out = None
-    for blk in blk_list:
+    for blk in parse:
         try:
             data, meta = do_block(blk, meta)
         except Exception as exc:
@@ -296,40 +346,11 @@ def do_recurse(blk_list=[], meta={}, merge_func=merge_stream):  # pylint: disabl
             raise exc
         if data:  # may have been a 'meta' block returning no data
             out = merge_func(out, data)
-    return out
 
-
-def replacement(path, meta):
-    '''replacement()
-    path    :   path to the YAML template
-                to be opened and processed
-    meta    :   optional dictionary of key:value pairs
-                to be used in processing 'path'
-    '''
-    # template file
-    with open(path, 'r') as fil:
-        template = YM.load(fil)
-    assert 'replacement' in template, 'no "replacement" object in ' + path
-    template = template['replacement']
-
-    # paths are relative to template: chdir to template dir
-    chd = os.path.dirname(path)
-    if chd:
-        cwd = os.getcwd()
-        os.chdir(chd)
-
-    # allow caller to set alternate line endings
-    meta = meta or {}
-    if 'eol' in meta:
-        global EOL  # pylint: disable=global-statement
-        EOL = meta['eol']
-
-    # expect toplevel objects to always return StringIO
-    out = do_recurse(template, meta)
-
+    # undo any dir changes as a result of parsing files
     if chd:
         os.chdir(cwd)
-    return out.getvalue()
+    return out
 
 
 def main():
@@ -367,9 +388,8 @@ NOTE: separation into key:value is done at the first ':' ONLY;
         parser.print_help()
         exit(1)
 
-    sys.stdout.write(replacement(args.yaml, meta))
+    sys.stdout.write(replacement(args.yaml, meta).getvalue())
     sys.stdout.flush()
 
-#   main
 if __name__ == "__main__":
     main()
