@@ -359,7 +359,7 @@ def main():
     import argparse
 
     # args
-    desc = '''replacement: the YAML templating utility.'''
+    desc = 'replacement v' + version + ' : the YAML templating utility.'
     parser = argparse.ArgumentParser(description=desc,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('-t', '--template', metavar='YAML_PATH', dest='yaml', type=str,
@@ -384,7 +384,7 @@ NOTE: separation into key:value is done at the first ':' ONLY;
     assert not args.verbose, 'verbose not implemented'
 
     if not args.yaml:
-        print('''we require a template path; use '-t YAML_PATH' flag.\n\n''', file=sys.stderr)
+        print('''we require a template path; use '-t YAML_PATH' flag.\n''', file=sys.stderr)
         parser.print_help()
         exit(1)
 
