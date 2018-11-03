@@ -1,0 +1,8 @@
+---
+# should output nothing
+# tests/nothing.yaml
+replacement:
+  - meta: dict
+    input:
+      hello: world
+...
