@@ -18,3 +18,6 @@ All examples from the [project documentation](../README.md) should show
 1. Working with dictionaries
     - see [dict.yaml](./dict.yaml)
     - see [dict_file.yaml](./dict_file.yaml)
+
+1. Substituting function arguments when 'prep' directive is given
+    - see [func_prep.yaml](./func_prep.yaml)

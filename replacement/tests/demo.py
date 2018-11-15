@@ -5,6 +5,13 @@ python module exporting some dummy functions for use in testing replacement.py
 '''
 
 
+def ret_kwargs(**kwargs):
+    '''ret_kwargs()
+    Return kwargs as a dictionary.
+    '''
+    return kwargs
+
+
 def ret_a_dict(existing):
     '''ret_a_dict()
     append a key-value to 'existing' (if it exists)

@@ -13,7 +13,7 @@ from ruamel.yaml import YAML
 
 
 name = "replacement"  # pylint: disable=invalid-name
-version = "0.3.0"  # pylint: disable=invalid-name
+version = "0.3.1"  # pylint: disable=invalid-name
 
 
 # A shiny global ruamel.yaml obj with sane options (dumps should pass yamllint)
@@ -265,7 +265,7 @@ def do_block(blk, meta):
                'dict': lambda: subst_dict(inp, meta, blk.get('prep')),
                'file': lambda: open(inp, 'r'),
                'eval': lambda: eval(inp),  # pylint: disable=eval-used
-               'func': lambda: streamify(get_import(inp)(**blk.get('args', {}))),
+               'func': lambda: streamify(get_import(inp)(**subst_dict(blk.get('args', {}), meta, blk.get('prep')))),
                'exec': None,  # TODO
                'replacement': lambda: inp
               }

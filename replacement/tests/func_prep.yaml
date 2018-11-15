@@ -1,0 +1,15 @@
+---
+# preprocessing of function arguments
+# tests/func_prep.yaml
+replacement:
+  - meta: dict
+    input:
+      subst: secret
+  - text: func
+    prep: format
+    args:
+      hello: world
+      param: "{subst}"
+    input: |
+      tests.demo.ret_kwargs
+...
