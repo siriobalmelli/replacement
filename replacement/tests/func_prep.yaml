@@ -11,5 +11,5 @@ replacement:
       hello: world
       param: "{subst}"
     input: |
-      tests.demo.ret_kwargs
+      ret_kwargs ./demo.py
 ...

@@ -3,7 +3,9 @@
 python3 templating tool.
 (c) 2018 Sirio Balmelli
 '''
-import importlib
+from importlib import import_module
+from importlib.util import spec_from_file_location
+from importlib.util import module_from_spec
 import os
 import sys
 import json
@@ -152,23 +154,45 @@ def get_import(func_name):
     if func:
         return func
 
-    # Try to import, starting from leftmost token and ignoring rightmost
-    #+  e.g.: for 'toaster.ToasterClass.sanitize', try:
-    #+      -> path: toaster                func_name: ToasterClass.sanitize
-    #+      -> path: toaster.ToasterClass   func_name: sanitize
-    lst = func_name.split('.')
-    for path, tok in [('.'.join(lst[:-i]), '.'.join(lst[-i:]))
-                      for i in range(1, len(lst)).__reversed__()]:
+    # log all attempted imports so we can trace failures intelligently
+    attempts = []
+
+    # import statement may be one of:
+    # 1. 'a.b.c' which is standard python but COMPLETELY braindead for files not in PYTHONPATH
+    # 2. 'c a/b.py' which is SANE
+    # we must of course support both
+    paths = func_name.split(' ')
+    if len(paths) == 1:
+        # Try to import, starting from leftmost token and ignoring rightmost
+        #+  e.g.: for 'toaster.ToasterClass.sanitize', try:
+        #+      -> path: toaster                func_name: ToasterClass.sanitize
+        #+      -> path: toaster.ToasterClass   func_name: sanitize
+        lst = func_name.split('.')
+        for path, tok in [('.'.join(lst[:-i]), '.'.join(lst[-i:]))
+                          for i in range(1, len(lst)).__reversed__()]:
+            attempts += ['import_module("{0}")'.format(path)]
+            try:
+                mod = import_module(path)
+                for item in tok.split('.'):
+                    mod = getattr(mod, item)
+                return mod
+            except:  # pylint: disable=bare-except
+                pass
+
+    elif len(paths) == 2:
+        paths[1] = os.path.join(os.getcwd(), paths[1])
+        attempts += ['spec_from_file_location("{0}", "{1}")'.format(paths[0], paths[1])]
         try:
-            mod = importlib.import_module(path)
-            for item in tok.split('.'):
-                mod = getattr(mod, item)
-            return mod
+            spec = spec_from_file_location(paths[0], paths[1])
+            mod = module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            return getattr(mod, paths[0])
         except:  # pylint: disable=bare-except
             pass
 
-    print('could not find/import function: ' + func_name, file=sys.stderr)
-    print('NOTE that this is sensitive to PYTHONPATH', file=sys.stderr)
+    print('IMPORT FAIL:', file=sys.stderr)
+    for att in attempts:
+        print(att, file=sys.stderr)
     return None
 
 

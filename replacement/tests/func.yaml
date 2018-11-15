@@ -8,7 +8,7 @@ replacement:
       existing: {'original': 'thesis'}
     # NOTE that this is sensitive to PYTHONPATH
     input: |
-      tests.demo.ret_a_dict
+      ret_a_dict ./demo.py
   - text: text
     prep: format
     input: |
@@ -21,10 +21,13 @@ replacement:
     args:
       existing: {'original': 'thesis'}
     input: |
-      tests.demo.ret_a_dict
+      ret_a_dict ./demo.py
   # run a function returning a list of strings; treat each one as a line of text
   - text: func
     args: {}
+    # notice non-portable BRAINDEAD python dot.notation
+    # ... will break if 'replacement' (the script) is MOVED vis-a-vis demo.py
+    # (of OF COURSE the CWD is blithely ignored ... why would ANYONE us it LOL)
     input: |
       tests.demo.ret_a_stream
 ...
