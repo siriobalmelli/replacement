@@ -15,7 +15,7 @@ from ruamel.yaml import YAML
 
 
 name = "replacement"  # pylint: disable=invalid-name
-version = "0.3.1"  # pylint: disable=invalid-name
+version = "0.3.2"  # pylint: disable=invalid-name
 
 
 # A shiny global ruamel.yaml obj with sane options (dumps should pass yamllint)
@@ -285,13 +285,14 @@ def do_block(blk, meta):
     else:  # relies on string coercion in "preprocess" above
         global RENDER_JS  # pylint: disable=global-statement
         RENDER_JS = 'json' in blk.get('options', [])  # how to stringify
-        inz = {'text': lambda: stringify(inp),
-               'dict': lambda: subst_dict(inp, meta, blk.get('prep')),
-               'file': lambda: open(inp, 'r'),
+
+        inz = {'dict': lambda: subst_dict(inp, meta, blk.get('prep')),
                'eval': lambda: eval(inp),  # pylint: disable=eval-used
+               'exec': lambda: streamify(exec(inp)),  #pylint: disable=exec-used
+               'file': lambda: open(inp, 'r'),
                'func': lambda: streamify(get_import(inp)(**subst_dict(blk.get('args', {}), meta, blk.get('prep')))),
-               'exec': None,  # TODO
-               'replacement': lambda: inp
+               'replacement': lambda: inp,
+               'text': lambda: stringify(inp)
               }
 
     # get 'yield: input' function pair

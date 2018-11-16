@@ -333,7 +333,39 @@ hello 6
 216
 ```
 
-### 7. imports and function execution
+### 7. python `exec`
+
+Sometimes it is advantageous to manipulate the runtime environment.
+
+In the below example, this is being used to import a module which will
+be needed by a subsequency call to `eval`.
+
+```yaml
+# use of eval with an exec statement to execute an import call
+# tests/eval_exec.yaml
+replacement:
+  - meta: exec
+    input: |
+      global IPv4Network
+      from ipaddress import IPv4Network
+  - meta: eval
+    input: |
+      {'gateway': str([h for h in IPv4Network('192.168.1.0/24').hosts()][-1])}
+  - text: text
+    prep: format
+    input: |
+      my gateway is {gateway}
+```
+
+```bash
+$ replacement -t tests/eval_exec.yaml
+my gateway is 192.168.1.254
+```
+
+NOTE: python `exec` is very powerful,
+please *avoid* running `replacement` as a privileged user.
+
+### 8. imports and function execution
 
 The `func` input directive can be used to find and call an external function
 (see [demo.py](tests/demo.py) for reference):
@@ -380,7 +412,7 @@ secret 42
 2. world
 ```
 
-## 8. Recursion
+## 9. Recursion
 
 Or, how I learned to stop worrying and have templates import other templates.
 

@@ -1,0 +1,16 @@
+---
+# use of eval with an exec statement to execute an import call
+# tests/eval_exec.yaml
+replacement:
+  - meta: exec
+    input: |
+      global IPv4Network
+      from ipaddress import IPv4Network
+  - meta: eval
+    input: |
+      {'gateway': str([h for h in IPv4Network('192.168.1.0/24').hosts()][-1])}
+  - text: text
+    prep: format
+    input: |
+      my gateway is {gateway}
+...
