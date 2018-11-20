@@ -1,0 +1,25 @@
+---
+# insert contents of file as metadata
+# tests/file_as_meta.yaml
+replacement:
+  - text: dict
+    input:
+      # produces {"hello": "hi"}
+      - dict: text
+        key: hello
+        input: |
+          "hi"
+      - dict: file
+        key: contents
+        input: hello.out
+
+      - meta: dict
+        input:
+          - dict: file
+            key: data
+            input: prep.out
+      - dict: dict
+        prep: substitute
+        input:
+          also: $data
+...

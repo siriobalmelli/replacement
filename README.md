@@ -221,6 +221,44 @@ hi 5
 list [1, 2, 3, 4]
 ```
 
+### 3a. value -> dictionary using `key`
+
+```yaml
+---
+# insert contents of file as metadata
+# tests/file_as_meta.yaml
+replacement:
+  - text: dict
+    input:
+      # produces {"hello": "hi"}
+      - dict: text
+        key: hello
+        input: |
+          "hi"
+      - dict: file
+        key: contents
+        input: hello.out
+
+      - meta: dict
+        input:
+          - dict: file
+            key: data
+            input: prep.out
+      - dict: dict
+        prep: substitute
+        input:
+          also: $data
+...
+```
+
+```bash
+$ replacement -t tests/file_as_meta.yaml
+---
+hello: hi
+contents: hello world
+also: hello world
+...
+```
 
 ### 4. nesting
 

@@ -15,7 +15,7 @@ from ruamel.yaml import YAML
 
 
 name = "replacement"  # pylint: disable=invalid-name
-version = "0.3.2"  # pylint: disable=invalid-name
+version = "0.3.3"  # pylint: disable=invalid-name
 
 
 # A shiny global ruamel.yaml obj with sane options (dumps should pass yamllint)
@@ -224,11 +224,12 @@ def streamify(unk):
         out.write(stringify(unk))
     return out
 
-def dictify(unk):
+def dictify(unk, key):
     '''dictify()
     'unk' may be:
     - already a dictionary
     - a string or stream containing YAML/JSON to be parsed
+    - a scalar to be turned into a key-value pair (if 'key' is given)
     - garbage to be ignored, and an empty dictionary issued instead
     '''
     # dictionary is pass-through
@@ -241,6 +242,8 @@ def dictify(unk):
         unk = YM.load(unk)
         if isinstance(unk, dict):
             return unk
+        if isinstance(unk, str) and key:
+            return {key: unk}
     except:  # pylint: disable=bare-except
         pass
     # in any event, return an empty dictionary
@@ -268,11 +271,13 @@ def do_block(blk, meta):
     # 'im' is "intermediate", denoting a value of uncertain type
     yields = {'text': lambda im: (subst_stream(streamify(im), meta, blk.get('proc')),
                                   meta),
-              'dict': lambda im: (subst_dict(dictify(im), meta, blk.get('proc')),
+              'dict': lambda im: (subst_dict(dictify(im, blk.get('key')),
+                                             meta, blk.get('proc')),
                                   meta),
               'meta': lambda im: (None,
                                   # merge 'meta' into self (clobber meta)
-                                  merge_dict(subst_dict(dictify(im), meta, blk.get('proc')),
+                                  merge_dict(subst_dict(dictify(im, blk.get('key')),
+                                                        meta, blk.get('proc')),
                                              meta)),
               'replacement': lambda im: (replacement(im, meta),
                                          meta)
@@ -330,7 +335,7 @@ def replacement(parse, meta={}, merge_func=merge_stream):  # pylint: disable=dan
     if not isinstance(parse, list):
         try:
             if not isinstance(parse, dict):
-                dic = dictify(parse)
+                dic = dictify(parse, None)
                 if not dic:
                     with open(parse, 'r') as fil:
                         dic = YM.load(fil)
