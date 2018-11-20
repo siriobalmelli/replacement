@@ -8,18 +8,20 @@ replacement:
       - dict: text
         key: hello
         input: |
-          "hi"
+          hi
       - dict: file
         key: contents
         input: hello.out
 
-      - meta: dict
-        input:
-          - dict: file
-            key: data
-            input: prep.out
+      - meta: file
+        key: data
+        input: prep.out
       - dict: dict
         prep: substitute
         input:
           also: $data
+
+      - dict: file
+        key: largefile
+        input: recurse.out
 ...

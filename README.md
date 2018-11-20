@@ -234,29 +234,32 @@ replacement:
       - dict: text
         key: hello
         input: |
-          "hi"
+          hi
       - dict: file
         key: contents
         input: hello.out
 
-      - meta: dict
-        input:
-          - dict: file
-            key: data
-            input: prep.out
+      - meta: file
+        key: data
+        input: prep.out
       - dict: dict
         prep: substitute
         input:
           also: $data
+
+      - dict: file
+        key: largefile
+        input: recurse.out
 ...
 ```
 
 ```bash
-$ replacement -t tests/file_as_meta.yaml
 ---
 hello: hi
 contents: hello world
 also: hello world
+largefile: "recursed inline\nv1.1 tag \"my_awesome_tag\"\nmessage hello world\nhi\
+  \ 5\nthis value may not exist - I exist I promise!"
 ...
 ```
 

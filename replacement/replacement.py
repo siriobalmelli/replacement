@@ -203,6 +203,11 @@ def stringify(scalar):
     '''stringify()
     return a stringified value with *only* EOL at end of line
     '''
+    if hasattr(scalar, 'getvalue'):
+        scalar = scalar.getvalue()
+    elif hasattr(scalar, 'seek') and hasattr(scalar, 'read'):
+        scalar.seek(0)
+        scalar = scalar.read()
     return str(scalar).rstrip() + EOL
 
 def streamify(unk):
@@ -236,18 +241,19 @@ def dictify(unk, key):
     if isinstance(unk, dict):
         return unk
     # otherwise should be valid YAML (JSON is a subset of YAML)
-    unk = streamify(unk)
-    unk.seek(0)
+    stf = streamify(unk)
+    stf.seek(0)
     try:
-        unk = YM.load(unk)
-        if isinstance(unk, dict):
-            return unk
-        if isinstance(unk, str) and key:
-            return {key: unk}
+        stf = YM.load(stf)
+        if isinstance(stf, dict):
+            return stf
+#        if isinstance(stf, str) and key:
+#            return {key: stf}
     except:  # pylint: disable=bare-except
         pass
     # in any event, return an empty dictionary
-    return {}
+    return {key: stringify(unk)} if key else {}
+    #return {}
 
 
 ##
