@@ -15,7 +15,7 @@ from ruamel.yaml import YAML
 
 
 name = "replacement"  # pylint: disable=invalid-name
-version = "0.3.3"  # pylint: disable=invalid-name
+version = "0.3.4"  # pylint: disable=invalid-name
 
 
 # A shiny global ruamel.yaml obj with sane options (dumps should pass yamllint)
@@ -54,19 +54,42 @@ def subst_stream(strm, meta, method):
 
 def subst_dict(dic, meta, method):
     '''subst_dict()
-    String-coerce all string-able values in 'dic', optionally substitute them
-    against 'meta' using 'method'.
-    Does NOT recurse into sub-objects or lists.
+    String-coerce all string-able scalars in 'dic' that are not already a string.
+    optionally substitute strings against 'meta' using 'method'.
     '''
     dic = dic or {}
-    methods = {'literal': str,  # assume only passthrough *needs* string coercion
-               'format': lambda stg: stg.format(**meta),
+    methods = {'format': lambda stg: stg.format(**meta),
                'substitute': lambda stg: string.Template(stg).substitute(**meta),
-               'safe_substitute' : lambda stg: string.Template(stg).safe_substitute(**meta)
+               'safe_substitute': lambda stg: string.Template(stg).safe_substitute(**meta)
               }
-    sub = methods.get(method) or methods.get('literal')
-    return {k: (sub(v).rstrip(EOL) if isinstance(v, (str, float, int)) else v)
-            for k, v in dic.items()}
+    sub = methods.get(method, lambda x: x)  # default is passthrough
+
+    def process(val):
+        '''process()
+        Format based on type.
+        NOTE we must use isinstance() (and can't e.g. look up
+        into a dictionary of type) because of types such as
+        'ruamel.yaml.scalarstring.PreservedScalarString'
+        '''
+        # strings are already strings: format but don't re-stringify
+        if isinstance(val, str):
+            return sub(val).rstrip(EOL)
+
+        # scalars can become strings, but certainly won't contain
+        # formatting/substitution directives
+        if isinstance(val, (float, int)):
+            return str(val)
+
+        # sub-objects should also be substituted
+        # (which covers e.g. 'prep' directives on dictionaries given as 'input')
+        # NOTE that lists (i.e. sub-directives, nested blocks) are NOT substituted
+        if isinstance(val, dict):
+            return subst_dict(val, meta, method)
+
+        # passthrough for anything else
+        return val
+
+    return {k: process(v) for k, v in dic.items()}
 
 
 ##

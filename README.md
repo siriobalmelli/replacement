@@ -258,8 +258,8 @@ replacement:
 hello: hi
 contents: hello world
 also: hello world
-largefile: "recursed inline\nv1.1 tag \"my_awesome_tag\"\nmessage hello world\nhi\
-  \ 5\nthis value may not exist - I exist I promise!"
+hi: "recursed inline\nv1.1 tag \"my_awesome_tag\"\nmessage hello world\nhi 5\nthis\
+  \ value may not exist - I exist I promise!"
 ...
 ```
 

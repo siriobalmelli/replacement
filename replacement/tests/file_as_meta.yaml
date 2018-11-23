@@ -21,7 +21,14 @@ replacement:
         input:
           also: $data
 
-      - dict: file
+      - meta: file
         key: largefile
         input: recurse.out
+
+      - dict: dict
+        prep: format
+        input:
+          hello: world
+          hi: |
+            {largefile}
 ...
