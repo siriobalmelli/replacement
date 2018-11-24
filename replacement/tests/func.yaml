@@ -27,7 +27,8 @@ replacement:
     args: {}
     # notice non-portable BRAINDEAD python dot.notation
     # ... will break if 'replacement' (the script) is MOVED vis-a-vis demo.py
-    # (of OF COURSE the CWD is blithely ignored ... why would ANYONE us it LOL)
+    # (of OF COURSE the CWD is blithely ignored ... why would ANYONE use it LOL)
+    # TLDR: use the '[symbol] [path]' notation in the preceding example
     input: |
       tests.demo.ret_a_stream
 ...

@@ -1,0 +1,90 @@
+---
+# template for generating project README file
+# execute with 'replacement.py -t README.template.yaml >README.md'
+replacement:
+  - meta: file
+    key: hello_yaml
+    input: tests/hello.yaml
+  - meta: file
+    key: hello_out
+    input: tests/hello.out
+
+  - meta: file
+    key: file_yaml
+    input: tests/file.yaml
+  - meta: file
+    key: file_out
+    input: tests/file.out
+
+  - meta: file
+    key: metadata_yaml
+    input: tests/metadata.yaml
+  - meta: file
+    key: metadata_out
+    input: tests/metadata.out
+
+  - meta: file
+    key: a_json
+    input: tests/a.json
+
+  - meta: file
+    key: meta_file_yaml
+    input: tests/meta_file.yaml
+  - meta: file
+    key: meta_file_out
+    input: tests/meta_file.out
+
+  - meta: file
+    key: file_as_meta_yaml
+    input: tests/file_as_meta.yaml
+  - meta: file
+    key: file_as_meta_out
+    input: tests/file_as_meta.out
+
+  - meta: file
+    key: nesting_yaml
+    input: tests/nesting.yaml
+  - meta: file
+    key: nesting_out
+    input: tests/nesting.out
+
+  - meta: file
+    key: prep_yaml
+    input: tests/prep.yaml
+  - meta: file
+    key: prep_out
+    input: tests/prep.out
+
+  - meta: file
+    key: an_eval_yaml
+    input: tests/an_eval.yaml
+  - meta: file
+    key: an_eval_out
+    input: tests/an_eval.out
+
+  - meta: file
+    key: eval_exec_yaml
+    input: tests/eval_exec.yaml
+  - meta: file
+    key: eval_exec_out
+    input: tests/eval_exec.out
+
+  - meta: file
+    key: func_yaml
+    input: tests/func.yaml
+  - meta: file
+    key: func_out
+    input: tests/func.out
+
+  - meta: file
+    key: recurse_yaml
+    input: tests/recurse.yaml
+  - meta: file
+    key: recurse_out
+    input: tests/recurse.out
+
+  # the main event: substitute the template against all these variables
+  - text: file
+    proc: safe_substitute
+    input: ./README.template.md
+...

@@ -1,0 +1,13 @@
+---
+# insert contents of a yaml file into meta and substitute them into a dictionary
+# should be transparent
+# tests/yaml_as_meta.yaml
+replacement:
+  - meta: file
+    key: a_yaml
+    input: file_as_meta.yaml
+  - text: text
+    proc: substitute
+    input:
+      $a_yaml
+...

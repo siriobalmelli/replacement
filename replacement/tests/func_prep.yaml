@@ -6,10 +6,10 @@ replacement:
     input:
       subst: secret
   - text: func
-    prep: format
+    prep: substitute
     args:
       hello: world
-      param: "{subst}"
+      param: $subst
     input: |
       ret_kwargs ./demo.py
 ...

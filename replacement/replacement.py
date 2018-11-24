@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-''''replacement.py
+'''replacement.py
 python3 templating tool.
 (c) 2018 Sirio Balmelli
 '''
+
 from importlib import import_module
 from importlib.util import spec_from_file_location
 from importlib.util import module_from_spec
@@ -15,7 +16,7 @@ from ruamel.yaml import YAML
 
 
 name = "replacement"  # pylint: disable=invalid-name
-version = "0.3.4"  # pylint: disable=invalid-name
+version = "0.3.5"  # pylint: disable=invalid-name
 
 
 # A shiny global ruamel.yaml obj with sane options (dumps should pass yamllint)
@@ -52,10 +53,10 @@ def subst_stream(strm, meta, method):
     out.writelines([sub(lin) for lin in strm])
     return out
 
-def subst_dict(dic, meta, method):
+def subst_dict(dic, meta, method, recurse):
     '''subst_dict()
-    String-coerce all string-able scalars in 'dic' that are not already a string.
-    optionally substitute strings against 'meta' using 'method'.
+    Substitute strings in dictionary against 'meta' using 'method',
+    optionally recursing into sub-dictionaries and sub-lists.
     '''
     dic = dic or {}
     methods = {'format': lambda stg: stg.format(**meta),
@@ -67,29 +68,30 @@ def subst_dict(dic, meta, method):
     def process(val):
         '''process()
         Format based on type.
-        NOTE we must use isinstance() (and can't e.g. look up
-        into a dictionary of type) because of types such as
-        'ruamel.yaml.scalarstring.PreservedScalarString'
+        NOTE we must use isinstance() (and can't e.g. look up a dictionary of types)
+        because of types such as 'ruamel.yaml.scalarstring.PreservedScalarString'
         '''
-        # strings are already strings: format but don't re-stringify
+        # only strings should the subject of string formatting ;)
         if isinstance(val, str):
             return sub(val).rstrip(EOL)
-
-        # scalars can become strings, but certainly won't contain
-        # formatting/substitution directives
-        if isinstance(val, (float, int)):
-            return str(val)
-
-        # sub-objects should also be substituted
+        # sub-objects may also need to be substituted
         # (which covers e.g. 'prep' directives on dictionaries given as 'input')
-        # NOTE that lists (i.e. sub-directives, nested blocks) are NOT substituted
-        if isinstance(val, dict):
-            return subst_dict(val, meta, method)
-
+        if recurse:
+            if isinstance(val, dict):
+                return subst_dict(val, meta, method, True)
+            if isinstance(val, list):
+                return [subst_dict(i, meta, method, True) if isinstance(i, dict) else i
+                        for i in val]
         # passthrough for anything else
         return val
 
-    return {k: process(v) for k, v in dic.items()}
+    # this is _apparently_ ugly and un-pythonic bla bla, however by modifying in-place
+    # we avoid losing metadata/functionality that comes with derived types
+    # (e.g. ruamel.YAML)
+    for k in dic.keys():
+        dic[k] = process(dic[k])
+    return dic
+    #return {k: process(v) for k, v in dic.items()}
 
 
 ##
@@ -255,14 +257,21 @@ def streamify(unk):
 def dictify(unk, key):
     '''dictify()
     'unk' may be:
+    - something to be turned into a key-value pair (when 'key' is given)
     - already a dictionary
     - a string or stream containing YAML/JSON to be parsed
-    - a scalar to be turned into a key-value pair (if 'key' is given)
     - garbage to be ignored, and an empty dictionary issued instead
     '''
+    # This must be first
+    # 'unk' may be a YAML doc (valid dictionary) being loaded from a file into 'meta';
+    # we need to assign it to 'key', not load its contents directly into 'meta'
+    if key:
+        return {key: stringify(unk)}
+
     # dictionary is pass-through
     if isinstance(unk, dict):
         return unk
+
     # otherwise should be valid YAML (JSON is a subset of YAML)
     stf = streamify(unk)
     stf.seek(0)
@@ -270,13 +279,11 @@ def dictify(unk, key):
         stf = YM.load(stf)
         if isinstance(stf, dict):
             return stf
-#        if isinstance(stf, str) and key:
-#            return {key: stf}
     except:  # pylint: disable=bare-except
         pass
-    # in any event, return an empty dictionary
-    return {key: stringify(unk)} if key else {}
-    #return {}
+
+    # catch-all: return an empty dictionary
+    return {}
 
 
 ##
@@ -293,7 +300,9 @@ def do_block(blk, meta):
     # Preprocess block before parsing it.
     # Will string-coerce scalars in the block whether a 'prep' directive
     # was given or not.
-    blk = subst_dict(blk, meta, blk.get('prep'))
+    # Do NOT recurse at this stage: certain inputs (e.g. 'dict')
+    # do their own preprocessing.
+    blk = subst_dict(blk, meta, blk.get('prep'), False)
 
     inp = blk['input']  # it is a hard fault not to have 'input' in block
 
@@ -301,12 +310,12 @@ def do_block(blk, meta):
     yields = {'text': lambda im: (subst_stream(streamify(im), meta, blk.get('proc')),
                                   meta),
               'dict': lambda im: (subst_dict(dictify(im, blk.get('key')),
-                                             meta, blk.get('proc')),
+                                             meta, blk.get('proc'), True),
                                   meta),
               'meta': lambda im: (None,
                                   # merge 'meta' into self (clobber meta)
                                   merge_dict(subst_dict(dictify(im, blk.get('key')),
-                                                        meta, blk.get('proc')),
+                                                        meta, blk.get('proc'), True),
                                              meta)),
               'replacement': lambda im: (replacement(im, meta),
                                          meta)
@@ -320,12 +329,11 @@ def do_block(blk, meta):
         global RENDER_JS  # pylint: disable=global-statement
         RENDER_JS = 'json' in blk.get('options', [])  # how to stringify
 
-        inz = {'dict': lambda: subst_dict(inp, meta, blk.get('prep')),
+        inz = {'dict': lambda: subst_dict(inp, meta, blk.get('prep'), True),
                'eval': lambda: eval(inp),  # pylint: disable=eval-used
                'exec': lambda: streamify(exec(inp)),  #pylint: disable=exec-used
                'file': lambda: open(inp, 'r'),
-               'func': lambda: streamify(get_import(inp)(**subst_dict(blk.get('args', {}), meta, blk.get('prep')))),
-               'replacement': lambda: inp,
+               'func': lambda: streamify(get_import(inp)(**subst_dict(blk.get('args', {}), meta, blk.get('prep'), False))),
                'text': lambda: stringify(inp)
               }
 

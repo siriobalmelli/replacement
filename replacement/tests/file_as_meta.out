@@ -2,6 +2,10 @@
 hello: hi
 contents: hello world
 also: hello world
-hi: "recursed inline\nv1.1 tag \"my_awesome_tag\"\nmessage hello world\nhi 5\nthis\
-  \ value may not exist - I exist I promise!"
+hi: |-
+  recursed inline
+  v1.1 tag "my_awesome_tag"
+  message hello world
+  hi 5
+  this value may not exist - I exist I promise!
 ...

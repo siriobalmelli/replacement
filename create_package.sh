@@ -5,6 +5,12 @@ set -e
 # Clean up previous packages
 rm -rfv build dist replacement.egg-info
 
+# muss pass tests
+./run-tests.sh
+
+# generate README
+./gen_readme.sh
+
 # Create package
 python3 setup.py sdist bdist_wheel
 

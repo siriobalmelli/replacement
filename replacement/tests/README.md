@@ -21,3 +21,7 @@ All examples from the [project documentation](../README.md) should show
 
 1. Substituting function arguments when 'prep' directive is given
     - see [func_prep.yaml](./func_prep.yaml)
+
+1. Populating 'meta' from file contents
+    - see [file_as_meta.yaml](./file_as_meta.yaml)
+    - see [yaml_as_meta.yaml](./yaml_as_meta.yaml)

@@ -13,7 +13,7 @@ replacement:
           version: $num $str
       - dict: text
         prep: substitute
-        input: |
+        input: |-
           ---
           num: $num
           ...
