@@ -31,4 +31,10 @@ replacement:
     # TLDR: use the '[symbol] [path]' notation in the preceding example
     input: |
       tests.demo.ret_a_stream
+  # same, but with a list of text lines (and proper importing)
+  - text: func
+    args:
+      an_arg: ["question"]
+    input: |
+      ret_a_list ./demo.py
 ...

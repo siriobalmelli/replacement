@@ -21,20 +21,18 @@ def ret_a_dict(existing):
     ret.update(existing)
     return ret
 
+def ret_a_stream():
+    '''ret_a_stream()
+    return a stream of text
+    '''
+    from io import StringIO
+    ret = StringIO()
+    ret.writelines(['1. hello\n', '2. world\n'])
+    return ret
 
 def ret_a_list(an_arg):
     '''ret_a_list()
     append a random number to 'existing' (if it exists)
     '''
     existing = an_arg or []
-    return [42] + existing
-
-
-def ret_a_stream():
-    '''ret_a_linelist()
-    return a list of text lines
-    '''
-    from io import StringIO
-    ret = StringIO()
-    ret.writelines(['1. hello\n', '2. world\n'])
-    return ret
+    return [42, "meaning"] + existing
