@@ -36,3 +36,8 @@ def ret_a_list(an_arg):
     '''
     existing = an_arg or []
     return [42, "meaning"] + existing
+
+class aClass:
+    @staticmethod
+    def invented_list():
+        return ['hello', 'from', 'staticmethod']

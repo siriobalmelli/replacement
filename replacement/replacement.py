@@ -16,7 +16,7 @@ from ruamel.yaml import YAML
 
 
 name = "replacement"  # pylint: disable=invalid-name
-version = "0.3.5"  # pylint: disable=invalid-name
+version = "0.3.6"  # pylint: disable=invalid-name
 
 
 # A shiny global ruamel.yaml obj with sane options (dumps should pass yamllint)
@@ -211,7 +211,11 @@ def get_import(func_name):
             spec = spec_from_file_location(paths[0], paths[1])
             mod = module_from_spec(spec)
             spec.loader.exec_module(mod)
-            return getattr(mod, paths[0])
+            # we may need to walk a tree of attributes e.g. 'aClass.a_func'
+            ret = None
+            for cur in paths[0].split('.'):
+                ret = getattr(ret, cur) if ret else getattr(mod, cur)
+            return ret
         except:  # pylint: disable=bare-except
             pass
 

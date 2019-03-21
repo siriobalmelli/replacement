@@ -441,6 +441,7 @@ replacement:
     input: |
       original {original}
       secret {secret}
+
   # run a function returning a dictionary and export return as JSON
   - text: func
     options:
@@ -449,7 +450,8 @@ replacement:
       existing: {'original': 'thesis'}
     input: |
       ret_a_dict ./demo.py
-  # run a function returning a list of strings; treat each one as a line of text
+
+  # run a function returning an IOStream
   - text: func
     args: {}
     # notice non-portable BRAINDEAD python dot.notation
@@ -458,7 +460,19 @@ replacement:
     # TLDR: use the '[symbol] [path]' notation in the preceding example
     input: |
       tests.demo.ret_a_stream
-...
+
+  # A function returning a list of lines of text
+  # (using the proper, cleaner import strategy)
+  - text: func
+    args:
+      an_arg: ["question"]
+    input: |
+      ret_a_list ./demo.py
+
+  # a static function inside a class
+  - text: func
+    input: |
+      aClass.invented_list ./demo.py
 ```
 
 ```bash
@@ -468,6 +482,12 @@ secret 42
 {"secret": 42, "original": "thesis"}
 1. hello
 2. world
+42
+meaning
+question
+hello
+from
+staticmethod
 ```
 
 ## 9. Recursion
