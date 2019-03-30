@@ -1,6 +1,6 @@
 {
   nixpkgs ? import <nixpkgs> {},
-  python ? nixpkgs.python36Full
+  python ? nixpkgs.python37Full
 }:
 
 with nixpkgs;
