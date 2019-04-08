@@ -42,16 +42,20 @@ def subst_stream(strm, meta, method):
     return (the same? or a new) stream with substituted values
     '''
     strm = strm or StringIO()
-    methods = {'passthrough': lambda stg: stg,
-               'format': lambda stg: stg.format(**meta),
-               'substitute': lambda stg: string.Template(stg).substitute(**meta),
-               'safe_substitute' : lambda stg: string.Template(stg).safe_substitute(**meta)
-              }
+    methods = {'passthrough':
+               lambda stg: stg,
+               'format':
+               lambda stg: stg.format(**meta),
+               'substitute':
+               lambda stg: string.Template(stg).substitute(**meta),
+               'safe_substitute':
+               lambda stg: string.Template(stg).safe_substitute(**meta)}
     sub = methods.get(method) or methods.get('passthrough')
     out = StringIO()
     strm.seek(0)
     out.writelines([sub(lin) for lin in strm])
     return out
+
 
 def subst_dict(dic, meta, method, recurse):
     '''subst_dict()
@@ -59,39 +63,43 @@ def subst_dict(dic, meta, method, recurse):
     optionally recursing into sub-dictionaries and sub-lists.
     '''
     dic = dic or {}
-    methods = {'format': lambda stg: stg.format(**meta),
-               'substitute': lambda stg: string.Template(stg).substitute(**meta),
-               'safe_substitute': lambda stg: string.Template(stg).safe_substitute(**meta)
-              }
+    methods = {'format':
+               lambda stg: stg.format(**meta),
+               'substitute':
+               lambda stg: string.Template(stg).substitute(**meta),
+               'safe_substitute':
+               lambda stg: string.Template(stg).safe_substitute(**meta)}
     sub = methods.get(method, lambda x: x)  # default is passthrough
 
     def process(val):
         '''process()
         Format based on type.
-        NOTE we must use isinstance() (and can't e.g. look up a dictionary of types)
-        because of types such as 'ruamel.yaml.scalarstring.PreservedScalarString'
+        NOTE we must use isinstance() (and can't e.g. look up a dict of types)
+        because of types e.g. 'ruamel.yaml.scalarstring.PreservedScalarString'
         '''
         # only strings should the subject of string formatting ;)
         if isinstance(val, str):
             return sub(val).rstrip(EOL)
         # sub-objects may also need to be substituted
-        # (which covers e.g. 'prep' directives on dictionaries given as 'input')
+        # (which covers e.g. 'prep' directives on dicts given as 'input')
         if recurse:
             if isinstance(val, dict):
                 return subst_dict(val, meta, method, True)
             if isinstance(val, list):
-                return [subst_dict(i, meta, method, True) if isinstance(i, dict) else i
+                return [subst_dict(i, meta, method, True)
+                        if isinstance(i, dict) else i
                         for i in val]
         # passthrough for anything else
         return val
 
-    # this is _apparently_ ugly and un-pythonic bla bla, however by modifying in-place
+    # this is _apparently_ ugly and un-pythonic bla bla,
+    # however by modifying in-place
     # we avoid losing metadata/functionality that comes with derived types
     # (e.g. ruamel.YAML)
     for k in dic.keys():
         dic[k] = process(dic[k])
     return dic
-    #return {k: process(v) for k, v in dic.items()}
+    # return {k: process(v) for k, v in dic.items()}
 
 
 ##
@@ -109,6 +117,7 @@ def merge_stream(in_to, *out_of):
         in_to.write(out.read())
     return in_to
 
+
 def merge_dict(in_to, *out_of):
     ''''merge_dict()
     Merge each dictionary in 'out_of' into 'in_to' and return it.
@@ -116,15 +125,17 @@ def merge_dict(in_to, *out_of):
     in_to = in_to or {}
     for obj in out_of:
         def scalar(thing=None):
-            return thing is None or isinstance(thing, str) or not hasattr(thing, "__len__")
+            return thing is None \
+                    or isinstance(thing, str) or not hasattr(thing, "__len__")
 
-        # expose a uniform way of inserting into 'a'
-        # ... depend on exceptions in case these don't pan out against b's datatype
+        # expose a uniform way of inserting into 'a' ...
+        # depend on exceptions in case these don't pan out against b's datatype
         # (putting the "duck" and "cower" firmly into duck-typing).
         if hasattr(in_to, "update"):
             def push(key, val=None):
                 '''push()
-                Check (and if kosher, push) key:val into 'in_to' - 'in_to' being a dictionary
+                Check (and if kosher, push) key:val into 'in_to'
+                ... 'in_to' being a dictionary
                 '''
                 # new keys inserted as-is
                 if key not in in_to:
@@ -141,6 +152,7 @@ def merge_dict(in_to, *out_of):
             # 'in_to' must be "insertable-into-able"
             if not hasattr(in_to, "append"):
                 in_to = [in_to]
+
             def push(key, val=None):
                 '''push_list()
                 Push into 'in_to' as in_to list.
@@ -174,7 +186,8 @@ def get_import(func_name):
     Look for 'func_name' function in existing func_namespaces;
     try to import it if not found
     '''
-    # Function in existing func_namespaces must match EXACTLY else it may belong to another module
+    # Function in existing func_namespaces must match EXACTLY
+    # else it may belong to another module
     func = locals().get(func_name) or globals().get(func_name)
     if func:
         return func
@@ -183,15 +196,16 @@ def get_import(func_name):
     attempts = []
 
     # import statement may be one of:
-    # 1. 'a.b.c' which is standard python but COMPLETELY braindead for files not in PYTHONPATH
+    # 1. 'a.b.c' which is standard python
+    #    but COMPLETELY braindead for files not in PYTHONPATH
     # 2. 'c a/b.py' which is SANE
     # we must of course support both
     paths = func_name.split(' ')
     if len(paths) == 1:
         # Try to import, starting from leftmost token and ignoring rightmost
-        #+  e.g.: for 'toaster.ToasterClass.sanitize', try:
-        #+      -> path: toaster                func_name: ToasterClass.sanitize
-        #+      -> path: toaster.ToasterClass   func_name: sanitize
+        # e.g.: for 'toaster.ToasterClass.sanitize', try:
+        #     -> path: toaster                func_name: ToasterClass.sanitize
+        #     -> path: toaster.ToasterClass   func_name: sanitize
         lst = func_name.split('.')
         for path, tok in [('.'.join(lst[:-i]), '.'.join(lst[-i:]))
                           for i in range(1, len(lst)).__reversed__()]:
@@ -201,12 +215,13 @@ def get_import(func_name):
                 for item in tok.split('.'):
                     mod = getattr(mod, item)
                 return mod
-            except:  # pylint: disable=bare-except
+            except Exception:
                 pass
 
     elif len(paths) == 2:
         paths[1] = os.path.join(os.getcwd(), paths[1])
-        attempts += ['spec_from_file_location("{0}", "{1}")'.format(paths[0], paths[1])]
+        attempts.append(
+                ['spec_from_file_location("%s", "%s")' % (paths[0], paths[1])])
         try:
             spec = spec_from_file_location(paths[0], paths[1])
             mod = module_from_spec(spec)
@@ -216,7 +231,7 @@ def get_import(func_name):
             for cur in paths[0].split('.'):
                 ret = getattr(ret, cur) if ret else getattr(mod, cur)
             return ret
-        except:  # pylint: disable=bare-except
+        except Exception:
             pass
 
     print('IMPORT FAIL:', file=sys.stderr)
@@ -239,6 +254,7 @@ def stringify(scalar):
         scalar = scalar.read()
     return str(scalar).rstrip() + EOL
 
+
 def streamify(unk):
     '''streamify()
     Return a stream (with seek position most likely at end)
@@ -258,6 +274,7 @@ def streamify(unk):
         out.write(stringify(unk))
     return out
 
+
 def dictify(unk, key):
     '''dictify()
     'unk' may be:
@@ -267,7 +284,8 @@ def dictify(unk, key):
     - garbage to be ignored, and an empty dictionary issued instead
     '''
     # This must be first
-    # 'unk' may be a YAML doc (valid dictionary) being loaded from a file into 'meta';
+    # 'unk' may be a YAML doc (valid dictionary)
+    # being loaded from a file into 'meta';
     # we need to assign it to 'key', not load its contents directly into 'meta'
     if key:
         return {key: stringify(unk)}
@@ -283,7 +301,7 @@ def dictify(unk, key):
         stf = YM.load(stf)
         if isinstance(stf, dict):
             return stf
-    except:  # pylint: disable=bare-except
+    except Exception:
         pass
 
     # catch-all: return an empty dictionary
@@ -311,35 +329,45 @@ def do_block(blk, meta):
     inp = blk['input']  # it is a hard fault not to have 'input' in block
 
     # 'im' is "intermediate", denoting a value of uncertain type
-    yields = {'text': lambda im: (subst_stream(streamify(im), meta, blk.get('proc')),
+    yields = {'text': lambda im: (subst_stream(streamify(im),
+                                               meta,
+                                               blk.get('proc')),
                                   meta),
               'dict': lambda im: (subst_dict(dictify(im, blk.get('key')),
-                                             meta, blk.get('proc'), True),
+                                             meta,
+                                             blk.get('proc'),
+                                             True),
                                   meta),
               'meta': lambda im: (None,
                                   # merge 'meta' into self (clobber meta)
-                                  merge_dict(subst_dict(dictify(im, blk.get('key')),
-                                                        meta, blk.get('proc'), True),
+                                  merge_dict(subst_dict(dictify(im,
+                                                                blk.get('key')),
+                                                        meta,
+                                                        blk.get('proc'),
+                                                        True),
                                              meta)),
               'replacement': lambda im: (replacement(im, meta),
                                          meta)
-             }
+              }
 
     if isinstance(inp, list):
         inz = {'text': lambda: replacement(inp, meta, merge_stream),
                'dict': lambda: replacement(inp, meta, merge_dict)
-              }
+               }
     else:  # relies on string coercion in "preprocess" above
         global RENDER_JS  # pylint: disable=global-statement
         RENDER_JS = 'json' in blk.get('options', [])  # how to stringify
 
         inz = {'dict': lambda: subst_dict(inp, meta, blk.get('prep'), True),
                'eval': lambda: eval(inp),  # pylint: disable=eval-used
-               'exec': lambda: streamify(exec(inp)),  #pylint: disable=exec-used
+               'exec': lambda: streamify(exec(inp)),
                'file': lambda: open(inp, 'r'),
-               'func': lambda: streamify(get_import(inp)(**subst_dict(blk.get('args', {}), meta, blk.get('prep'), False))),
+               'func': lambda: streamify(get_import(inp)
+                                         (**subst_dict(blk.get('args', {}),
+                                                       meta,
+                                                       blk.get('prep'), False))),
                'text': lambda: stringify(inp)
-              }
+               }
 
     # get 'yield: input' function pair
     do_yield, do_input = [(yld, inp)
@@ -351,7 +379,7 @@ def do_block(blk, meta):
     return do_yield(do_input())
 
 
-def replacement(parse, meta={}, merge_func=merge_stream):  # pylint: disable=dangerous-default-value
+def replacement(parse, meta={}, merge_func=merge_stream):
     '''replacement()
     Entrance AND recursion point for replacement.
 
@@ -384,7 +412,8 @@ def replacement(parse, meta={}, merge_func=merge_stream):  # pylint: disable=dan
                 elif hasattr(parse, 'name'):
                     path = parse.name
 
-                # paths are relative to template: we may need to chdir to template dir
+                # paths are relative to template:
+                # we may need to chdir to template dir
                 if path:
                     chd = os.path.dirname(path)
                     if chd:
@@ -395,10 +424,10 @@ def replacement(parse, meta={}, merge_func=merge_stream):  # pylint: disable=dan
                 global EOL  # pylint: disable=global-statement
                 EOL = meta['eol']
         except Exception as exc:  # pylint: disable=bare-except
-            print('# ------------- error --------------------', file=sys.stderr)
-            print('cannot parse the following as a replacement template:', file=sys.stderr)
+            print('# ------------- error -------------------', file=sys.stderr)
+            print('cannot parse as a replacement template:', file=sys.stderr)
             print(parse)
-            print('# ----------------------------------------', file=sys.stderr)
+            print('# ---------------------------------------', file=sys.stderr)
             raise exc
 
     # process block list
@@ -407,13 +436,13 @@ def replacement(parse, meta={}, merge_func=merge_stream):  # pylint: disable=dan
         try:
             data, meta = do_block(blk, meta)
         except Exception as exc:
-            print('# ------------- error --------------------', file=sys.stderr)
+            print('# ------------- error -------------------', file=sys.stderr)
             print('# trace: block', file=sys.stderr)
             YM.dump(blk, sys.stderr)
             print('# trace: meta', file=sys.stderr)
             print('', file=sys.stderr)
             YM.dump(meta, sys.stderr)
-            print('# ----------------------------------------', file=sys.stderr)
+            print('# ---------------------------------------', file=sys.stderr)
             raise exc
         if data:  # may have been a 'meta' block returning no data
             out = merge_func(out, data)
@@ -431,36 +460,39 @@ def main():
 
     # args
     desc = 'replacement v' + version + ' : the YAML templating utility.'
-    parser = argparse.ArgumentParser(description=desc,
-                                     formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('-t', '--template', metavar='YAML_PATH', dest='yaml', type=str,
-                        help='''Execute 'replacement' directive in this YAML template.''')
-    parser.add_argument('-v', '--verbose', dest='verbose', action='store_true',
-                        help='''Print metadata (substitutions dictionary) to stderr.''')
+    parser = argparse.ArgumentParser(
+        description=desc, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument('-t', '--template',
+                        metavar='YAML_PATH', dest='yaml', type=str,
+                        help='Execute this YAML template.')
+    parser.add_argument('-v', '--verbose',
+                        dest='verbose', action='store_true',
+                        help='Print metadata (substitutions) dict to stderr.')
     parser.add_argument(metavar='META', dest='meta', nargs='*',
-                        help='''
-A "key:value" pair.
-Key-value pairs are added to the substitutions dictionary
-    used in executing YAML.
-NOTE: separation into key:value is done at the first ':' ONLY;
-    "a:b:c" becomes "a" : "b:c"
-                        ''')
+                        help=('A "key:value" pair.\n'
+                              'Key-value pairs are added'
+                              ' to the substitutions dictionary\n'
+                              'used in executing YAML.\n'
+                              'NOTE: separation into key:value'
+                              ' is done at the first ":" ONLY;\n'
+                              '"a:b:c" becomes "a" : "b:c"'))
     args = parser.parse_args()
 
     # parse any tokens
     # we split on the first ':' ... values can contain ':' characters
-    meta = {k:v for k, v in (tok.split(':', 1) for tok in args.meta if tok)
+    meta = {k: v for k, v in (tok.split(':', 1) for tok in args.meta if tok)
             if k and v}
 
     assert not args.verbose, 'verbose not implemented'
 
     if not args.yaml:
-        print('''we require a template path; use '-t YAML_PATH' flag.\n''', file=sys.stderr)
+        print('''need a template; use '-t YAML_PATH'.\n''', file=sys.stderr)
         parser.print_help()
         exit(1)
 
     sys.stdout.write(replacement(args.yaml, meta).getvalue())
     sys.stdout.flush()
+
 
 if __name__ == "__main__":
     main()
