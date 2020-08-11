@@ -3,8 +3,8 @@
 python3 templating tool.
 (c) 2020 Sirio Balmelli
 """
-__version__ = '0.4.3'
-__description__ = 'a tool to parse yaml templates and output text'
+__version__ = '0.4.4'
+__description__ = 'A tool to execute yaml templates and output text'
 
 
 from importlib import import_module

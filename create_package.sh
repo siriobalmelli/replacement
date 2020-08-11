@@ -4,9 +4,10 @@ set -e
 
 # Clean up previous packages
 python setup.py clean --all
+rm dist/*
 
 # generate README
-replacement -t README.yaml >README.md
+python -m replacement -t README.yaml >README.md
 
 # Create package
 python setup.py sdist bdist_wheel

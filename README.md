@@ -454,12 +454,14 @@ replacement:
   # run a function returning an IOStream
   - text: func
     args: {}
-    # notice non-portable BRAINDEAD python dot.notation
+    input: |
+      ret_a_stream ./demo.py
+    # previous use of non-portable BRAINDEAD python dot.notation
     # ... will break if 'replacement' (the script) is MOVED vis-a-vis demo.py
     # (of OF COURSE the CWD is blithely ignored ... why would ANYONE use it LOL)
-    # TLDR: use the '[symbol] [path]' notation in the preceding example
-    input: |
-      tests.demo.ret_a_stream
+    # TLDR: use the '[symbol] [path]' notation just above.
+    # The _original_ call (broken) was:
+    # tests.demo.ret_a_stream
 
   # A function returning a list of lines of text
   # (using the proper, cleaner import strategy)
