@@ -1,6 +1,6 @@
 ---
 # template for generating project README file
-# execute with 'replacement.py -t README.template.yaml >README.md'
+# execute with './replacement.py -t README.yaml >README.md'
 replacement:
   - meta: file
     key: hello_yaml

@@ -1,0 +1,6 @@
+pytest
+ruamel.yaml>=0.16.0
+setuptools
+sh
+twine
+wheel

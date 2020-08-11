@@ -8,7 +8,7 @@ Replacement is a python utility that parses a yaml template and outputs text.
 
 or, if you use [nix](https://nixos.org/):
 
-`nix-env --install -A 'nixpkgs.python36Packages.replacement'`
+`nix-env --install -A 'nixpkgs.python3Packages.replacement'`
 
 ## Introduction
 
@@ -233,7 +233,7 @@ $ replacement -t tests/func.yaml
 $func_out
 ```
 
-## 9. Recursion
+### 9. Recursion
 
 Or, how I learned to stop worrying and have templates import other templates.
 
@@ -245,6 +245,30 @@ $recurse_yaml
 $ replacement -t tests/recurse.yaml
 $recurse_out
 ```
+
+## Development
+
+The recommended development environment is:
+
+1. Python `venv` with `nix`:
+
+        nix-shell --pure  # activates a venv
+
+    alternately:
+
+        python -m venv venv
+        venv/bin/activate
+        alias pip="python -m pip"
+
+1. Install requirements:
+
+        pip install -r requirements.txt
+        pip install -e .
+
+1. Test and build:
+
+        pytest
+        ./create_package.sh
 
 ## NOTES
 

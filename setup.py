@@ -1,34 +1,42 @@
-'''setup.py
+"""setup.py
 PyPI build for replacement package
-(c) 2018 Anthony Soenen and Sirio Balmelli
-'''
+(c) 2020 Anthony Soenen and Sirio Balmelli
+"""
+from os import path
+from replacement import __version__, __description__
 from setuptools import setup, find_packages
-from replacement import name, version
 
-with open("README.md", "r") as fh:
-    LONG = fh.read()
+with open(path.join(path.dirname(__file__), 'README.md')) as readme:
+    LONG_DESCRIPTION = readme.read()
 
 setup(
-    name=name,
-    version=version,
+    name='replacement',
+    version=__version__,
+    description=__description__,
+
+    use_scm_version=True,
+
+    python_requires='>=3.6',  # f-strings
+    install_requires=[
+        'ruamel.yaml>=0.16.0'  # reproducible YAML representation
+    ],
+    extras_require={
+        'dev': ['pytest']
+    },
+
     packages=find_packages(),
-
-    install_requires=['ruamel.yaml'],
-    python_requires='>=3.5',
-
     entry_points={'console_scripts': ['replacement = replacement:main']},
 
-    author="Sirio Balmelli",
-    author_email="sirio.bm@gmail.com",
-    description="Replacement is a python utility that parses a yaml template and outputs text.",
+    author='Sirio Balmelli',
+    author_email='sirio.bm@gmail.com',
     license='Apache',
     keywords='replacement template substitute compile',
-    url="https://github.com/siriobalmelli/replacement",
-    long_description=LONG,
-    long_description_content_type="text/markdown",
+    url='https://github.com/siriobalmelli/replacement',
+    long_description=LONG_DESCRIPTION,
+    long_description_content_type='text/markdown',
     classifiers=[
-        "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: Apache Software License",
-        "Operating System :: OS Independent",
+        'Programming Language :: Python :: 3',
+        'License :: OSI Approved :: Apache Software License',
+        'Operating System :: OS Independent',
     ],
 )
